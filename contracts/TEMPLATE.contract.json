@@ -1,0 +1,54 @@
+{
+  "id": "0001",
+  "title": "<short title>",
+  "status": "draft",
+  "scope": {
+    "in": [],
+    "out": []
+  },
+  "interfaces": {
+    "commands": [
+      {
+        "name": "<command or endpoint name>",
+        "input_schema": "<path or inline schema>",
+        "output_schema": "<path or inline schema>",
+        "preconditions": [],
+        "postconditions": [],
+        "errors": [
+          {
+            "code": "<ERROR_CODE>",
+            "when": "<condition>",
+            "response": "<shape/fields>"
+          }
+        ]
+      }
+    ]
+  },
+  "data_contracts": [
+    {
+      "name": "<entity/event>",
+      "schema": "<path or inline schema>",
+      "invariants": []
+    }
+  ],
+  "system_invariants": [],
+  "observability": {
+    "logs": [],
+    "metrics": [],
+    "traces": []
+  },
+  "acceptance_tests": [
+    {
+      "id": "AT-1",
+      "description": "",
+      "proves": []
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [],
+  "definition_of_done": [
+    "open_questions is empty",
+    "acceptance_tests implemented and passing",
+    "each pre/post/invariant/error has a proving test or runtime assertion"
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "id": "0001",
+  "title": "<short title>",
+  "status": "draft",
+  "artifact_paths": {
+    "task": "tasks/0001-<slug>.md",
+    "contract": "contracts/0001.contract.json",
+    "evidence": "reports/0001.evidence.md"
+  },
+  "loop": [
+    {
+      "step": "read_background",
+      "description": "Read the task seed + any linked docs; summarize constraints and unknowns.",
+      "status": "todo",
+      "exit_criteria": [
+        "Constraints captured in contract.scope/constraints",
+        "Unknowns listed in contract.open_questions OR resolved"
+      ],
+      "evidence": [
+        "notes in contract.assumptions/open_questions"
+      ]
+    },
+    {
+      "step": "read_relevant_code",
+      "description": "Locate the relevant Rust/TS code paths and existing patterns.",
+      "status": "todo",
+      "exit_criteria": [
+        "Relevant files listed (paths) in evidence report",
+        "Existing conventions captured (errors, logging, validation)"
+      ],
+      "evidence": [
+        "reports/<id>.evidence.md section: Repo Recon"
+      ]
+    },
+    {
+      "step": "draft_contract",
+      "description": "Write contract.json with pre/post/invariants/errors + acceptance tests.",
+      "status": "todo",
+      "exit_criteria": [
+        "contract.status is draft",
+        "contract has acceptance_tests IDs and descriptions"
+      ],
+      "evidence": [
+        "contracts/<id>.contract.json"
+      ]
+    },
+    {
+      "step": "ask_blocking_questions",
+      "description": "Ask up to 3 questions that block making the contract ready.",
+      "status": "todo",
+      "exit_criteria": [
+        "All blocking decisions resolved OR explicitly recorded as assumptions",
+        "contract.open_questions is empty"
+      ],
+      "evidence": [
+        "contract.open_questions cleared",
+        "contract.assumptions updated"
+      ]
+    },
+    {
+      "step": "set_contract_ready",
+      "description": "Set contract.status=ready only when open_questions is empty.",
+      "status": "todo",
+      "exit_criteria": [
+        "contract.status == ready",
+        "contract.open_questions is empty"
+      ],
+      "evidence": [
+        "contracts/<id>.contract.json"
+      ]
+    },
+    {
+      "step": "implement",
+      "description": "Implement minimal diff to satisfy the contract; no unrelated edits.",
+      "status": "todo",
+      "exit_criteria": [
+        "Code changes align to contract clauses"
+      ],
+      "evidence": [
+        "git diff",
+        "evidence mapping"
+      ]
+    },
+    {
+      "step": "test",
+      "description": "Run Rust + TS tests/lints/build as applicable; fix until green.",
+      "status": "todo",
+      "exit_criteria": [
+        "Checks pass"
+      ],
+      "evidence": [
+        "reports/<id>.evidence.md outputs"
+      ]
+    },
+    {
+      "step": "checklist_and_evidence",
+      "description": "Produce evidence pack mapping contract clauses -> proving tests/assertions.",
+      "status": "todo",
+      "exit_criteria": [
+        "Evidence pack complete and consistent"
+      ],
+      "evidence": [
+        "reports/<id>.evidence.md"
+      ]
+    },
+    {
+      "step": "mark_implemented",
+      "description": "Update contract.status=implemented only when DoD satisfied.",
+      "status": "todo",
+      "exit_criteria": [
+        "contract.status == implemented"
+      ],
+      "evidence": [
+        "contracts/<id>.contract.json"
+      ]
+    }
+  ]
+}

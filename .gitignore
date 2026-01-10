@@ -1,0 +1,130 @@
+# ==========================
+# OS & Editor
+# ==========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ==========================
+# Environment & Secrets
+# ==========================
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+secrets/
+
+# ==========================
+# Python
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+.python-version
+
+# Testing & Coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# mypy / pyright / ruff
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyright/
+.ruff_cache/
+
+# ==========================
+# TypeScript / JavaScript
+# ==========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.npm/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Build outputs
+dist/
+out/
+build/
+*.js.map
+*.d.ts.map
+
+# ==========================
+# Rust
+# ==========================
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# ==========================
+# Miscellaneous
+# ==========================
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+.cache/
+tmp/
+temp/
+logs/
