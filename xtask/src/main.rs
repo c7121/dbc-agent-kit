@@ -1,7 +1,9 @@
 use anyhow::{anyhow, Context, Result};
-use clap::{Parser, Subcommand, Args};
+use clap::{Args, Parser, Subcommand};
 use serde_json::{Map, Value};
+use std::ffi::OsStr;
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 /// Repo automation helpers (Contract‑First / DbC workflow).
@@ -31,12 +33,21 @@ struct NewTaskArgs {
     /// Task id, e.g. 0001
     #[arg(long)]
     id: String,
-    /// Slug, e.g. data‑orchestration
+
+    /// Slug, e.g. data-orchestration
     #[arg(long)]
     slug: String,
+
     /// Overwrite existing files if present
     #[arg(long, default_value_t = false)]
     force: bool,
+
+    /// Ask you a few prompts and write a pre-filled task markdown file.
+    ///
+    /// This is meant for humans. Agents typically run non-interactive and let CONTRACT mode
+    /// resolve ambiguity via question rounds.
+    #[arg(long, default_value_t = false)]
+    interactive: bool,
 }
 
 /// Arguments for the `cbd validate-ready` subcommand.
@@ -68,20 +79,31 @@ fn run() -> Result<i32> {
 
     match cli {
         Cli::Cbd(cmd) => match cmd {
-            CbdCommand::NewTask(args) => cbd_new_task(&args.id, &args.slug, args.force),
+            CbdCommand::NewTask(args) => cbd_new_task(&args),
             CbdCommand::ValidateReady(args) => cbd_validate_ready(&args.id),
         },
     }
 }
 
-/// Determine the repository root. The xtask crate lives either at the root or
-/// inside `.cbd/xtask`. We ascend one parent from `CARGO_MANIFEST_DIR`.
+/// Determine the repository root.
+///
+/// Supports both:
+/// - `<repo>/xtask`
+/// - `<repo>/.cbd/xtask`
 fn repo_root() -> Result<PathBuf> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let root = manifest_dir
+    let parent = manifest_dir
         .parent()
         .ok_or_else(|| anyhow!("Could not determine repo root from CARGO_MANIFEST_DIR"))?;
-    Ok(root.to_path_buf())
+
+    if parent.file_name() == Some(OsStr::new(".cbd")) {
+        let root = parent
+            .parent()
+            .ok_or_else(|| anyhow!("Could not determine repo root (xtask is inside .cbd/)"))?;
+        return Ok(root.to_path_buf());
+    }
+
+    Ok(parent.to_path_buf())
 }
 
 /// Return the path to the `.cbd` directory at the repo root.
@@ -131,14 +153,156 @@ fn set_string_field(obj: &mut Value, key: &str, val: &str) {
     map.insert(key.to_string(), Value::String(val.to_string()));
 }
 
-fn cbd_new_task(id: &str, slug: &str, force: bool) -> Result<i32> {
+/// Prompt for a single line. If the user enters nothing and a default is provided, returns the default.
+fn prompt_line(label: &str, default: Option<&str>) -> Result<String> {
+    match default {
+        Some(d) => print!("{label} [{d}]: "),
+        None => print!("{label}: "),
+    }
+    io::stdout().flush().context("Failed to flush stdout")?;
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .context("Failed to read from stdin")?;
+
+    let s = input.trim().to_string();
+    if s.is_empty() {
+        Ok(default.unwrap_or("").to_string())
+    } else {
+        Ok(s)
+    }
+}
+
+/// Prompt for a multi-line block. User finishes by submitting an empty line.
+fn prompt_block(label: &str) -> Result<String> {
+    println!("{label} (enter one or more lines; finish with an empty line):");
+    let mut lines: Vec<String> = Vec::new();
+
+    loop {
+        print!("> ");
+        io::stdout().flush().context("Failed to flush stdout")?;
+
+        let mut line = String::new();
+        io::stdin()
+            .read_line(&mut line)
+            .context("Failed to read from stdin")?;
+
+        let line = line
+            .trim_end_matches(|c| c == '\n' || c == '\r')
+            .to_string();
+
+        if line.trim().is_empty() {
+            break;
+        }
+
+        lines.push(line);
+    }
+
+    Ok(lines.join("\n"))
+}
+
+fn title_from_slug(slug: &str) -> String {
+    let words = slug
+        .split(|c: char| c == '-' || c == '_' || c == ' ')
+        .filter(|w| !w.is_empty())
+        .map(|w| {
+            let mut chars = w.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if words.is_empty() {
+        "Untitled".to_string()
+    } else {
+        words.join(" ")
+    }
+}
+
+fn normalize_block(text: &str) -> String {
+    text.trim_end().to_string()
+}
+
+fn body_or(text: &str, fallback: &str) -> String {
+    if text.trim().is_empty() {
+        fallback.to_string()
+    } else {
+        normalize_block(text)
+    }
+}
+
+fn render_task_markdown(
+    id: &str,
+    title: &str,
+    goal: &str,
+    user_story: &str,
+    context: &str,
+    constraints: &str,
+    out_of_scope: &str,
+    unknowns: &str,
+) -> String {
+    let title = body_or(title, "Untitled");
+    let goal = body_or(goal, "TBD");
+    let user_story = body_or(user_story, "As a <user>, I want <capability> so that <benefit>.");
+    let context = body_or(context, "- TBD");
+    let constraints = body_or(constraints, "- TBD");
+    let out_of_scope = body_or(out_of_scope, "- TBD");
+    let unknowns = if unknowns.trim().is_empty() {
+        "- (none yet; the agent will ask in CONTRACT mode)".to_string()
+    } else {
+        normalize_block(unknowns)
+    };
+
+    // Keep this aligned with your contract-first workflow.
+    // The point is to capture just enough intent so CONTRACT mode can draft the DbC artifact.
+    format!(
+        "\
+# Task {id} — {title}
+
+## Goal
+{goal}
+
+## User story
+{user_story}
+
+## Context
+{context}
+
+## Constraints
+{constraints}
+
+## Out of scope
+{out_of_scope}
+
+## Unknowns
+{unknowns}
+
+## Clarifications (optional)
+If any section above is blank or vague, answer these prompts (the agent may ask these in CONTRACT mode):
+- Goal: What observable outcome proves the task is complete?
+- User story: Who benefits from this change, what do they need, and why?
+- Context: What existing code/docs should be read first?
+- Constraints: Any perf, security, compliance, or operational limits?
+- Out of scope: What is explicitly excluded?
+"
+    )
+}
+
+fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
     let cbd = cbd_root()?;
 
     // Output paths
-    let task_path = cbd.join("tasks").join(format!("{id}-{slug}.md"));
-    let contract_path = cbd.join("contracts").join(format!("{id}.contract.json"));
-    let bundle_path = cbd.join("bundles").join(format!("{id}.bundle.json"));
-    let evidence_path = cbd.join("reports").join(format!("{id}.evidence.md"));
+    let task_path = cbd.join("tasks").join(format!("{}-{}.md", args.id, args.slug));
+    let contract_path = cbd
+        .join("contracts")
+        .join(format!("{}.contract.json", args.id));
+    let bundle_path = cbd.join("bundles").join(format!("{}.bundle.json", args.id));
+    let evidence_path = cbd
+        .join("reports")
+        .join(format!("{}.evidence.md", args.id));
 
     // Template paths
     let task_template_path = cbd.join("tasks").join("TEMPLATE.md");
@@ -146,13 +310,7 @@ fn cbd_new_task(id: &str, slug: &str, force: bool) -> Result<i32> {
     let bundle_template_path = cbd.join("bundles").join("TEMPLATE.bundle.json");
     let evidence_template_path = cbd.join("reports").join("TEMPLATE.evidence.md");
 
-    // Load templates
-    let task_template = read_to_string(&task_template_path).with_context(|| {
-        format!(
-            "Missing task template. Expected at {}",
-            task_template_path.display()
-        )
-    })?;
+    // Load templates (contract/bundle/evidence are required)
     let mut contract_t = read_json(&contract_template_path).with_context(|| {
         format!(
             "Missing contract template. Expected at {}",
@@ -172,11 +330,59 @@ fn cbd_new_task(id: &str, slug: &str, force: bool) -> Result<i32> {
         )
     })?;
 
-    // Fill a few obvious fields (mirror existing Python behavior)
-    let task_text = task_template.replace("<ID>", id);
+    // Title: default from slug; interactive can override
+    let default_title = title_from_slug(&args.slug);
+    let mut title = default_title.clone();
 
-    set_string_field(&mut contract_t, "id", id);
-    set_string_field(&mut bundle_t, "id", id);
+    // Task markdown:
+    // - Non-interactive: use TEMPLATE.md (replace <ID> and <SLUG> if present)
+    // - Interactive: prompt for fields and render a filled file (independent of TEMPLATE.md)
+    let task_text = if args.interactive {
+        println!("Creating task {}-{} interactively.", args.id, args.slug);
+        println!("Press Enter to accept defaults or skip optional fields.\n");
+
+        title = prompt_line("Short title", Some(&default_title))?;
+
+        let goal = prompt_block("Goal (what should be true when done)")?;
+        let user_story = prompt_line(
+            "User story (As a ..., I want ..., so that ...) [optional]",
+            None,
+        )?;
+        let context = prompt_block("Context (background, links, current behavior)")?;
+        let constraints = prompt_block("Constraints (runtime, perf, security, compliance)")?;
+        let out_of_scope = prompt_block("Out of scope (explicitly not doing)")?;
+        let unknowns = prompt_block("Unknowns (open questions; optional)")?;
+
+        render_task_markdown(
+            &args.id,
+            &title,
+            &goal,
+            &user_story,
+            &context,
+            &constraints,
+            &out_of_scope,
+            &unknowns,
+        )
+    } else {
+        let task_template = read_to_string(&task_template_path).with_context(|| {
+            format!(
+                "Missing task template. Expected at {}",
+                task_template_path.display()
+            )
+        })?;
+
+        task_template
+            .replace("<ID>", &args.id)
+            .replace("<SLUG>", &args.slug)
+    };
+
+    // Fill a few obvious fields in contract/bundle
+    set_string_field(&mut contract_t, "id", &args.id);
+    set_string_field(&mut contract_t, "title", &title);
+
+    set_string_field(&mut bundle_t, "id", &args.id);
+    set_string_field(&mut bundle_t, "title", &title);
+    set_string_field(&mut bundle_t, "slug", &args.slug);
 
     // bundle.artifact_paths.{task,contract,evidence}
     {
@@ -188,25 +394,25 @@ fn cbd_new_task(id: &str, slug: &str, force: bool) -> Result<i32> {
 
         ap.insert(
             "task".to_string(),
-            Value::String(format!(".cbd/tasks/{id}-{slug}.md")),
+            Value::String(format!(".cbd/tasks/{}-{}.md", args.id, args.slug)),
         );
         ap.insert(
             "contract".to_string(),
-            Value::String(format!(".cbd/contracts/{id}.contract.json")),
+            Value::String(format!(".cbd/contracts/{}.contract.json", args.id)),
         );
         ap.insert(
             "evidence".to_string(),
-            Value::String(format!(".cbd/reports/{id}.evidence.md")),
+            Value::String(format!(".cbd/reports/{}.evidence.md", args.id)),
         );
     }
 
-    let evidence_text = evidence_template.replace("<ID>", id);
+    let evidence_text = evidence_template.replace("<ID>", &args.id);
 
     // Write outputs
-    write_text(&task_path, &task_text, force)?;
-    write_json(&contract_path, &contract_t, force)?;
-    write_json(&bundle_path, &bundle_t, force)?;
-    write_text(&evidence_path, &evidence_text, force)?;
+    write_text(&task_path, &task_text, args.force)?;
+    write_json(&contract_path, &contract_t, args.force)?;
+    write_json(&bundle_path, &bundle_t, args.force)?;
+    write_text(&evidence_path, &evidence_text, args.force)?;
 
     let root = repo_root()?;
     println!("Created:");
