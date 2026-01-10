@@ -6,7 +6,7 @@
       "clause_id": "CMD-1-PRE-1",
       "proofs": [
         {
-          "kind": "test|assertion|manual",
+          "kind": "static|test|debug|runtime|manual",
           "location": "<path:line or test name>",
           "details": "<optional>"
         }

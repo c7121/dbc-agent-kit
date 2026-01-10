@@ -16,7 +16,8 @@
           {
             "id": "CMD-1-PRE-1",
             "statement": "<condition>",
-            "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+            "enforcement": "<static|test|debug|runtime>",
+            "mechanism": "<rust_type|rust_test|rust_debug_assert|rust_runtime_validation|ts_ux_validation>",
             "obligation": "<caller|system|both>"
           }
         ],
@@ -24,7 +25,8 @@
           {
             "id": "CMD-1-POST-1",
             "statement": "<guarantee>",
-            "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+            "enforcement": "<static|test|debug|runtime>",
+            "mechanism": "<rust_type|rust_test|rust_debug_assert|rust_runtime_validation|ts_ux_validation>",
             "obligation": "<system>"
           }
         ],
@@ -33,7 +35,8 @@
             "id": "CMD-1-ERR-1",
             "code": "INVALID_ARGUMENT",
             "when": "<condition>",
-            "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+            "enforcement": "<static|test|debug|runtime>",
+            "mechanism": "<rust_type|rust_test|rust_debug_assert|rust_runtime_validation|ts_ux_validation>",
             "obligation": "<system>",
             "response": "<shape/fields>"
           }
@@ -49,7 +52,8 @@
         {
           "id": "DC-1-INV-1",
           "statement": "<invariant>",
-          "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+          "enforcement": "<static|test|debug|runtime>",
+          "mechanism": "<rust_type|rust_test|rust_debug_assert|rust_runtime_validation|ts_ux_validation>",
           "obligation": "<system>"
         }
       ]
@@ -59,7 +63,8 @@
     {
       "id": "SYS-INV-1",
       "statement": "<invariant>",
-      "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+      "enforcement": "<static|test|debug|runtime>",
+      "mechanism": "<rust_type|rust_test|rust_debug_assert|rust_runtime_validation|ts_ux_validation>",
       "obligation": "<system>"
     }
   ],

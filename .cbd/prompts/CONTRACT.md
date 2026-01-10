@@ -52,9 +52,23 @@ When drafting `.cbd/contracts/<id>.contract.json`:
 - Write every clause as a structured object with a stable `id`:
   - Preconditions/Postconditions/Invariants: `{ id, statement, enforcement, obligation }`
   - Errors: `{ id, code, when, enforcement, obligation }`
-  - `enforcement` must be explicit (Rust is authoritative; TS is UX-only).
+  - `enforcement` must be explicit: `"static" | "test" | "debug" | "runtime"` (Rust is authoritative; TS is UX-only).
 - Add acceptance tests that prove the contract (map each test to the clause ids it proves).
 - If something is unknown, put it in `open_questions` and ask the human (2–3 max per round).
+
+## Verification hierarchy (how to choose enforcement)
+Principle: prefer **STATIC > TEST > DEBUG > RUNTIME**.
+
+Decision flow (pick the first that works):
+1) Can types encode it? → `enforcement: "static"`
+2) Else can a compile-time check enforce it? → `enforcement: "static"`
+3) Else is it expensive/slow (integration, large fixtures, non-local)? → `enforcement: "test"`
+4) Else is it an internal dev aid / invariant that shouldn’t run in production? → `enforcement: "debug"`
+5) Else must it be enforced in production (untrusted input, safety/security invariants)? → `enforcement: "runtime"`
+6) Else consider omitting the clause (or restate it as an assumption/non-goal).
+
+Note:
+- Rust enforcement is authoritative; TypeScript is UX-only and cannot be the sole enforcement of `runtime` clauses.
 
 ## How to write the bundle
 The bundle is the “loop checklist” the agent follows.
@@ -70,6 +84,6 @@ In `.cbd/bundles/<id>.bundle.json`, include steps like:
 ## Output requirements (what you must leave behind each round)
 At the end of each CONTRACT round, you must:
 1) Update/produce the contract JSON and bundle JSON in the repo.
-2) Print a short summary of what changed (1–2 paragraphs).
-3) Ask **2–3 blocking questions** (or ask 0 if `open_questions` is empty and you can mark `status: "ready"`).
+2) Print a short summary of what changed (1–2 paragraphs) **inside triple backticks** (copy/paste friendly).
+3) Ask **2–3 blocking questions** (or ask 0 if `open_questions` is empty and you can mark `status: "ready"`), also **inside the same triple-backticks block**.
 4) STOP.

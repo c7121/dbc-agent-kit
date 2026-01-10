@@ -32,6 +32,32 @@ Prove every clause with tests and/or runtime assertions, and produce an evidence
 - No unrelated diffs. No “drive-by refactors.”
 - No new dependencies, migrations, or secret reads unless explicitly approved in `AGENTS.md`.
 
+## Export archive + final report format (canonical)
+Archive location and naming:
+- Directory: `.cbd/exports/`
+- Filename: `.cbd/exports/<id>-<YYYYMMDD-HHMMSS>.zip`
+- Timestamp: `$(date +%Y%m%d-%H%M%S)` (format: `YYYYMMDD-HHMMSS`)
+
+Final message rule (applies to success + blocked):
+- Your final message MUST be a **single** triple-backticks block, with **no text outside** the block.
+
+Canonical archive commands (full repo export for review):
+```bash
+mkdir -p .cbd/exports
+TS="$(date +%Y%m%d-%H%M%S)"
+ARCHIVE=".cbd/exports/<id>-$TS.zip"
+
+# Preferred if git state is clean and commits exist:
+git archive --format=zip --output="$ARCHIVE" HEAD
+
+# If there are uncommitted changes or no commits:
+zip -r "$ARCHIVE" . \
+  -x ".git/*" \
+  -x ".cbd/exports/*" \
+  -x "target/*" -x "*/target/*" \
+  -x "node_modules/*" -x "*/node_modules/*"
+```
+
 ## Handoff when blocked (important: don’t interrogate the human here)
 Questions are primarily for CONTRACT mode.
 In BUILD mode, if you discover missing decisions, contradictions, or unimplementable clauses:
@@ -45,26 +71,25 @@ In BUILD mode, if you discover missing decisions, contradictions, or unimplement
    - set `status` back to `"draft"` (or `"blocked"` if you use that)
    - append the handoff questions into `open_questions`
 
-3) Create a **timestamped handoff archive** (`.cbd/handoffs/<id>-<YYYYMMDD-HHMMSS>.zip`) containing only the relevant files:
+3) Create a **timestamped handoff archive** at `$ARCHIVE` (use the canonical naming above) containing only the relevant files:
    - If work touched a single file: that file + its tests
    - If work touched a crate/package: the whole crate (src/, Cargo.toml, docs/, tests/)
    - Always include: the contract, bundle, and any evidence/handoff reports for this task ID
 
    ```bash
-   mkdir -p .cbd/handoffs
-   zip -r ".cbd/handoffs/<id>-$(date +%Y%m%d-%H%M%S).zip" \
+   zip -r "$ARCHIVE" \
      path/to/relevant/files \
      .cbd/contracts/<id>.contract.json \
      .cbd/bundles/<id>.bundle.json \
      .cbd/reports/<id>.*.md
    ```
 
-4) Output a **handoff message** wrapped in triple backticks:
+4) Output a **handoff message** (format per “Export archive + final report format (canonical)”):
 
    ```
    ## BUILD Handoff — Task <id>
 
-   **Archive**: `.cbd/handoffs/<id>-<timestamp>.zip`
+   **Archive**: `$ARCHIVE`
 
    ### Summary
    <1-3 sentences: what was implemented or attempted, current state, why blocked>
@@ -106,10 +131,22 @@ Even if you are not actually committing, you must propose a commit message:
 - If breaking, use `!` and/or a `BREAKING CHANGE:` footer.
 - Do not hand-edit changelogs; release notes are generated with **git-cliff**.
 
+## Success handoff (required when verify passes)
+At the end of a successful BUILD session (after `xtask cbd verify` passes), you MUST:
+1) Create a timestamped export archive (full repo export) using the canonical commands above.
+2) Output a final BUILD report including:
+   - Archive path
+   - `xtask cbd verify` command + output summary
+   - Clause coverage summary (X/Y)
+   - Suggested Conventional Commit message
+
 ## Output requirements
 At the end of BUILD work, you must output:
-1) What changed (files + intent, brief)
-2) Evidence pack status (what clauses are proven where)
-3) Test/lint outputs (or point to the evidence report)
-4) Suggested Conventional Commit message
-5) If blocked: point to `.cbd/reports/<id>.handoff.md` and stop
+1) Create the export archive using “Export archive + final report format (canonical)”
+2) Output a final report (same section) including:
+   - What changed (files + intent, brief)
+   - Evidence pack status (what clauses are proven where; X/Y)
+   - Test/lint/verify outputs (or point to the evidence report)
+   - Archive path
+   - Suggested Conventional Commit message
+3) If blocked: point to `.cbd/reports/<id>.handoff.md` and stop
