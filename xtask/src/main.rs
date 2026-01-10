@@ -1,17 +1,22 @@
 use anyhow::{anyhow, Context, Result};
 use clap::{Args, Parser, Subcommand};
 use serde_json::{Map, Value};
+use std::collections::{BTreeSet, HashSet};
 use std::ffi::OsStr;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 /// Repo automation helpers (Contract‑First / DbC workflow).
 ///
 /// This command provides contract‑first scaffolding and validation for the `.cbd/`
 /// directory. It supports nested subcommands under `cbd`.
 #[derive(Parser, Debug)]
-#[command(name = "xtask", about = "Repo automation helpers (Contract‑First / DbC workflow)")]
+#[command(
+    name = "xtask",
+    about = "Repo automation helpers (Contract‑First / DbC workflow)"
+)]
 enum Cli {
     /// Contract‑First (DbC) workflow helpers under .cbd/
     #[command(subcommand)]
@@ -25,6 +30,8 @@ enum CbdCommand {
     NewTask(NewTaskArgs),
     /// Fail fast if a contract is not ready
     ValidateReady(ValidateReadyArgs),
+    /// Hard gate: ready + evidence coverage + checks
+    Verify(VerifyArgs),
 }
 
 /// Arguments for the `cbd new-task` subcommand.
@@ -58,12 +65,20 @@ struct ValidateReadyArgs {
     id: String,
 }
 
+/// Arguments for the `cbd verify` subcommand.
+#[derive(Args, Debug)]
+struct VerifyArgs {
+    /// Task id, e.g. 0001
+    #[arg(long)]
+    id: String,
+}
+
 fn main() {
     // Mirror the Python scripts' exit codes for easy CI use:
     // 0 = ok/ready
     // 2 = file missing
     // 3 = invalid JSON
-    // 4 = not ready / open questions present
+    // 4 = gate failed (not ready, open questions, or missing proofs)
     let code = match run() {
         Ok(code) => code,
         Err(e) => {
@@ -81,6 +96,7 @@ fn run() -> Result<i32> {
         Cli::Cbd(cmd) => match cmd {
             CbdCommand::NewTask(args) => cbd_new_task(&args),
             CbdCommand::ValidateReady(args) => cbd_validate_ready(&args.id),
+            CbdCommand::Verify(args) => cbd_verify(&args.id),
         },
     }
 }
@@ -141,7 +157,7 @@ fn write_json(path: &Path, value: &Value, force: bool) -> Result<()> {
 }
 
 /// Ensure the given `Value` is an object and return a mutable reference to the underlying map.
-fn ensure_object_mut<'a>(v: &'a mut Value) -> &'a mut Map<String, Value> {
+fn ensure_object_mut(v: &mut Value) -> &mut Map<String, Value> {
     if !v.is_object() {
         *v = Value::Object(Map::new());
     }
@@ -188,9 +204,7 @@ fn prompt_block(label: &str) -> Result<String> {
             .read_line(&mut line)
             .context("Failed to read from stdin")?;
 
-        let line = line
-            .trim_end_matches(|c| c == '\n' || c == '\r')
-            .to_string();
+        let line = line.trim_end_matches(&['\n', '\r'][..]).to_string();
 
         if line.trim().is_empty() {
             break;
@@ -204,7 +218,7 @@ fn prompt_block(label: &str) -> Result<String> {
 
 fn title_from_slug(slug: &str) -> String {
     let words = slug
-        .split(|c: char| c == '-' || c == '_' || c == ' ')
+        .split(&['-', '_', ' '][..])
         .filter(|w| !w.is_empty())
         .map(|w| {
             let mut chars = w.chars();
@@ -234,6 +248,7 @@ fn body_or(text: &str, fallback: &str) -> String {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_task_markdown(
     id: &str,
     title: &str,
@@ -246,7 +261,10 @@ fn render_task_markdown(
 ) -> String {
     let title = body_or(title, "Untitled");
     let goal = body_or(goal, "TBD");
-    let user_story = body_or(user_story, "As a <user>, I want <capability> so that <benefit>.");
+    let user_story = body_or(
+        user_story,
+        "As a <user>, I want <capability> so that <benefit>.",
+    );
     let context = body_or(context, "- TBD");
     let constraints = body_or(constraints, "- TBD");
     let out_of_scope = body_or(out_of_scope, "- TBD");
@@ -295,20 +313,24 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
     let cbd = cbd_root()?;
 
     // Output paths
-    let task_path = cbd.join("tasks").join(format!("{}-{}.md", args.id, args.slug));
+    let task_path = cbd
+        .join("tasks")
+        .join(format!("{}-{}.md", args.id, args.slug));
     let contract_path = cbd
         .join("contracts")
         .join(format!("{}.contract.json", args.id));
     let bundle_path = cbd.join("bundles").join(format!("{}.bundle.json", args.id));
-    let evidence_path = cbd
+    let evidence_path = cbd.join("reports").join(format!("{}.evidence.md", args.id));
+    let evidence_json_path = cbd
         .join("reports")
-        .join(format!("{}.evidence.md", args.id));
+        .join(format!("{}.evidence.json", args.id));
 
     // Template paths
     let task_template_path = cbd.join("tasks").join("TEMPLATE.md");
     let contract_template_path = cbd.join("contracts").join("TEMPLATE.contract.json");
     let bundle_template_path = cbd.join("bundles").join("TEMPLATE.bundle.json");
     let evidence_template_path = cbd.join("reports").join("TEMPLATE.evidence.md");
+    let evidence_json_template_path = cbd.join("reports").join("TEMPLATE.evidence.json");
 
     // Load templates (contract/bundle/evidence are required)
     let mut contract_t = read_json(&contract_template_path).with_context(|| {
@@ -327,6 +349,12 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
         format!(
             "Missing evidence template. Expected at {}",
             evidence_template_path.display()
+        )
+    })?;
+    let mut evidence_json_t = read_json(&evidence_json_template_path).with_context(|| {
+        format!(
+            "Missing evidence.json template. Expected at {}",
+            evidence_json_template_path.display()
         )
     })?;
 
@@ -404,21 +432,30 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
             "evidence".to_string(),
             Value::String(format!(".cbd/reports/{}.evidence.md", args.id)),
         );
+        ap.insert(
+            "evidence_json".to_string(),
+            Value::String(format!(".cbd/reports/{}.evidence.json", args.id)),
+        );
     }
 
     let evidence_text = evidence_template.replace("<ID>", &args.id);
+    set_string_field(&mut evidence_json_t, "contract_id", &args.id);
 
     // Write outputs
     write_text(&task_path, &task_text, args.force)?;
     write_json(&contract_path, &contract_t, args.force)?;
     write_json(&bundle_path, &bundle_t, args.force)?;
     write_text(&evidence_path, &evidence_text, args.force)?;
+    write_json(&evidence_json_path, &evidence_json_t, args.force)?;
 
     let root = repo_root()?;
     println!("Created:");
     println!(
         "  {}",
-        task_path.strip_prefix(&root).unwrap_or(&task_path).display()
+        task_path
+            .strip_prefix(&root)
+            .unwrap_or(&task_path)
+            .display()
     );
     println!(
         "  {}",
@@ -429,7 +466,10 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
     );
     println!(
         "  {}",
-        bundle_path.strip_prefix(&root).unwrap_or(&bundle_path).display()
+        bundle_path
+            .strip_prefix(&root)
+            .unwrap_or(&bundle_path)
+            .display()
     );
     println!(
         "  {}",
@@ -438,8 +478,26 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
             .unwrap_or(&evidence_path)
             .display()
     );
+    println!(
+        "  {}",
+        evidence_json_path
+            .strip_prefix(&root)
+            .unwrap_or(&evidence_json_path)
+            .display()
+    );
 
     Ok(0)
+}
+
+fn contract_ready_details(data: &Value) -> (String, usize) {
+    let status = data.get("status").and_then(|v| v.as_str()).unwrap_or("");
+    let open_q_len = match data.get("open_questions") {
+        Some(Value::Array(arr)) => arr.len(),
+        Some(Value::Null) | None => 0,
+        Some(_) => 1, // present but wrong type => treat as "not ready"
+    };
+
+    (status.to_string(), open_q_len)
 }
 
 fn cbd_validate_ready(id: &str) -> Result<i32> {
@@ -459,12 +517,7 @@ fn cbd_validate_ready(id: &str) -> Result<i32> {
         }
     };
 
-    let status = data.get("status").and_then(|v| v.as_str()).unwrap_or("");
-    let open_q_len = match data.get("open_questions") {
-        Some(Value::Array(arr)) => arr.len(),
-        Some(Value::Null) | None => 0,
-        Some(_) => 1, // present but wrong type => treat as "not ready"
-    };
+    let (status, open_q_len) = contract_ready_details(&data);
 
     if status != "ready" || open_q_len > 0 {
         println!("Contract {id} not ready:");
@@ -478,4 +531,597 @@ fn cbd_validate_ready(id: &str) -> Result<i32> {
 
     println!("Contract {id} is ready.");
     Ok(0)
+}
+
+fn cbd_verify(id: &str) -> Result<i32> {
+    let cbd = cbd_root()?;
+
+    let contract_path = cbd.join("contracts").join(format!("{id}.contract.json"));
+    let evidence_path = cbd.join("reports").join(format!("{id}.evidence.json"));
+
+    if !contract_path.exists() {
+        println!("Missing contract: {}", contract_path.display());
+        return Ok(2);
+    }
+
+    let contract = match read_json(&contract_path) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Invalid JSON in {}: {e}", contract_path.display());
+            return Ok(3);
+        }
+    };
+
+    let (status, open_q_len) = contract_ready_details(&contract);
+    if status != "ready" || open_q_len > 0 {
+        println!("Contract {id} not ready:");
+        println!("  status={status:?}");
+        println!(
+            "  open_questions={}",
+            contract.get("open_questions").unwrap_or(&Value::Null)
+        );
+        return Ok(4);
+    }
+
+    let clause_ids = match collect_contract_clause_ids(&contract) {
+        Ok(ids) => ids,
+        Err(e) => {
+            println!("Contract {id} is ready, but clauses are invalid: {e:#}");
+            return Ok(3);
+        }
+    };
+
+    if let Err(e) = validate_acceptance_test_proves(&contract, &clause_ids) {
+        println!("Contract {id} acceptance_tests[].proves is invalid: {e:#}");
+        return Ok(3);
+    }
+
+    if !evidence_path.exists() {
+        println!("Missing evidence: {}", evidence_path.display());
+        return Ok(2);
+    }
+
+    let evidence = match read_json(&evidence_path) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Invalid JSON in {}: {e}", evidence_path.display());
+            return Ok(3);
+        }
+    };
+
+    if evidence.get("contract_id").and_then(|v| v.as_str()) != Some(id) {
+        println!(
+            "Evidence contract_id mismatch in {}: expected {id:?}, got {}",
+            evidence_path.display(),
+            evidence.get("contract_id").unwrap_or(&Value::Null)
+        );
+        return Ok(3);
+    }
+
+    let proven = match collect_proven_clause_ids(&evidence) {
+        Ok(ids) => ids,
+        Err(e) => {
+            println!(
+                "Invalid evidence.json in {}: {e:#}",
+                evidence_path.display()
+            );
+            return Ok(3);
+        }
+    };
+
+    let missing: Vec<String> = clause_ids
+        .iter()
+        .filter(|cid| !proven.contains(*cid))
+        .cloned()
+        .collect();
+
+    if !missing.is_empty() {
+        println!(
+            "Missing clause proofs for contract {id}: {}/{}",
+            missing.len(),
+            clause_ids.len()
+        );
+        for cid in missing {
+            println!("  - {cid}");
+        }
+        return Ok(4);
+    }
+
+    let root = repo_root()?;
+    run_rust_checks(&root)?;
+    run_typescript_checks(&root)?;
+
+    println!("cbd verify {id}: OK");
+    Ok(0)
+}
+
+fn collect_contract_clause_ids(contract: &Value) -> Result<BTreeSet<String>> {
+    let mut ids = BTreeSet::<String>::new();
+    let mut dupes = Vec::<String>::new();
+
+    // interfaces.commands[*].{preconditions,postconditions,errors}
+    match contract.get("interfaces") {
+        Some(Value::Object(interfaces)) => match interfaces.get("commands") {
+            Some(Value::Array(commands)) => {
+                for (i, cmd) in commands.iter().enumerate() {
+                    let ctx = format!("interfaces.commands[{i}]");
+                    let cmd_obj = cmd
+                        .as_object()
+                        .ok_or_else(|| anyhow!("Expected object at {ctx}"))?;
+
+                    let pre = cmd_obj
+                        .get("preconditions")
+                        .ok_or_else(|| anyhow!("Missing {ctx}.preconditions"))?
+                        .as_array()
+                        .ok_or_else(|| anyhow!("Expected array at {ctx}.preconditions"))?;
+                    collect_clause_ids_from_array(
+                        pre,
+                        &format!("{ctx}.preconditions"),
+                        &mut ids,
+                        &mut dupes,
+                    )?;
+
+                    let post = cmd_obj
+                        .get("postconditions")
+                        .ok_or_else(|| anyhow!("Missing {ctx}.postconditions"))?
+                        .as_array()
+                        .ok_or_else(|| anyhow!("Expected array at {ctx}.postconditions"))?;
+                    collect_clause_ids_from_array(
+                        post,
+                        &format!("{ctx}.postconditions"),
+                        &mut ids,
+                        &mut dupes,
+                    )?;
+
+                    let errs = cmd_obj
+                        .get("errors")
+                        .ok_or_else(|| anyhow!("Missing {ctx}.errors"))?
+                        .as_array()
+                        .ok_or_else(|| anyhow!("Expected array at {ctx}.errors"))?;
+                    collect_error_clause_ids_from_array(
+                        errs,
+                        &format!("{ctx}.errors"),
+                        &mut ids,
+                        &mut dupes,
+                    )?;
+                }
+            }
+            Some(_) => return Err(anyhow!("Expected array at interfaces.commands")),
+            None => {}
+        },
+        Some(_) => return Err(anyhow!("Expected object at interfaces")),
+        None => return Err(anyhow!("Missing interfaces")),
+    }
+
+    // data_contracts[*].invariants
+    if let Some(Value::Array(data_contracts)) = contract.get("data_contracts") {
+        for (i, dc) in data_contracts.iter().enumerate() {
+            let ctx = format!("data_contracts[{i}]");
+            let dc_obj = dc
+                .as_object()
+                .ok_or_else(|| anyhow!("Expected object at {ctx}"))?;
+            let inv = dc_obj
+                .get("invariants")
+                .ok_or_else(|| anyhow!("Missing {ctx}.invariants"))?
+                .as_array()
+                .ok_or_else(|| anyhow!("Expected array at {ctx}.invariants"))?;
+            collect_clause_ids_from_array(inv, &format!("{ctx}.invariants"), &mut ids, &mut dupes)?;
+        }
+    } else if let Some(v) = contract.get("data_contracts") {
+        return Err(anyhow!("Expected array at data_contracts, got {v:?}"));
+    }
+
+    // system_invariants
+    if let Some(Value::Array(system_invariants)) = contract.get("system_invariants") {
+        collect_clause_ids_from_array(
+            system_invariants,
+            "system_invariants",
+            &mut ids,
+            &mut dupes,
+        )?;
+    } else if let Some(v) = contract.get("system_invariants") {
+        return Err(anyhow!("Expected array at system_invariants, got {v:?}"));
+    }
+
+    if !dupes.is_empty() {
+        dupes.sort();
+        dupes.dedup();
+        return Err(anyhow!("Duplicate clause ids: {}", dupes.join(", ")));
+    }
+
+    Ok(ids)
+}
+
+fn validate_acceptance_test_proves(contract: &Value, clause_ids: &BTreeSet<String>) -> Result<()> {
+    let Some(Value::Array(tests)) = contract.get("acceptance_tests") else {
+        return Err(anyhow!("Missing acceptance_tests array"));
+    };
+
+    for (i, t) in tests.iter().enumerate() {
+        let ctx = format!("acceptance_tests[{i}]");
+        let t_obj = t
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object at {ctx}"))?;
+        let proves = t_obj
+            .get("proves")
+            .ok_or_else(|| anyhow!("Missing {ctx}.proves"))?
+            .as_array()
+            .ok_or_else(|| anyhow!("Expected array at {ctx}.proves"))?;
+        for (j, cid) in proves.iter().enumerate() {
+            let Some(cid) = cid.as_str() else {
+                return Err(anyhow!("Expected string at {ctx}.proves[{j}]"));
+            };
+            if !clause_ids.contains(cid) {
+                return Err(anyhow!("Unknown clause id in {ctx}.proves[{j}]: {cid}"));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn collect_clause_ids_from_array(
+    clauses: &[Value],
+    ctx: &str,
+    ids: &mut BTreeSet<String>,
+    dupes: &mut Vec<String>,
+) -> Result<()> {
+    for (i, c) in clauses.iter().enumerate() {
+        let cctx = format!("{ctx}[{i}]");
+        let obj = c
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object at {cctx}"))?;
+
+        let id = obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {cctx}.id"))?;
+        let statement = obj
+            .get("statement")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {cctx}.statement"))?;
+        let enforcement = obj
+            .get("enforcement")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {cctx}.enforcement"))?;
+        let obligation = obj
+            .get("obligation")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {cctx}.obligation"))?;
+
+        if id.trim().is_empty() {
+            return Err(anyhow!("Empty string {cctx}.id"));
+        }
+        if statement.trim().is_empty() {
+            return Err(anyhow!("Empty string {cctx}.statement"));
+        }
+        if enforcement.trim().is_empty() {
+            return Err(anyhow!("Empty string {cctx}.enforcement"));
+        }
+        if obligation.trim().is_empty() {
+            return Err(anyhow!("Empty string {cctx}.obligation"));
+        }
+
+        if !ids.insert(id.to_string()) {
+            dupes.push(id.to_string());
+        }
+    }
+
+    Ok(())
+}
+
+fn collect_error_clause_ids_from_array(
+    errors: &[Value],
+    ctx: &str,
+    ids: &mut BTreeSet<String>,
+    dupes: &mut Vec<String>,
+) -> Result<()> {
+    for (i, e) in errors.iter().enumerate() {
+        let ectx = format!("{ctx}[{i}]");
+        let obj = e
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object at {ectx}"))?;
+
+        let id = obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {ectx}.id"))?;
+        let code = obj
+            .get("code")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {ectx}.code"))?;
+        let when = obj
+            .get("when")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {ectx}.when"))?;
+        let enforcement = obj
+            .get("enforcement")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {ectx}.enforcement"))?;
+        let obligation = obj
+            .get("obligation")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {ectx}.obligation"))?;
+
+        if id.trim().is_empty() {
+            return Err(anyhow!("Empty string {ectx}.id"));
+        }
+        if code.trim().is_empty() {
+            return Err(anyhow!("Empty string {ectx}.code"));
+        }
+        if when.trim().is_empty() {
+            return Err(anyhow!("Empty string {ectx}.when"));
+        }
+        if enforcement.trim().is_empty() {
+            return Err(anyhow!("Empty string {ectx}.enforcement"));
+        }
+        if obligation.trim().is_empty() {
+            return Err(anyhow!("Empty string {ectx}.obligation"));
+        }
+
+        if !ids.insert(id.to_string()) {
+            dupes.push(id.to_string());
+        }
+    }
+
+    Ok(())
+}
+
+fn collect_proven_clause_ids(evidence: &Value) -> Result<HashSet<String>> {
+    let obj = evidence
+        .as_object()
+        .ok_or_else(|| anyhow!("Evidence must be a JSON object"))?;
+
+    let clause_proofs = obj
+        .get("clause_proofs")
+        .ok_or_else(|| anyhow!("Missing clause_proofs"))?
+        .as_array()
+        .ok_or_else(|| anyhow!("Expected array at clause_proofs"))?;
+
+    let mut proven = HashSet::<String>::new();
+
+    for (i, entry) in clause_proofs.iter().enumerate() {
+        let ctx = format!("clause_proofs[{i}]");
+        let eobj = entry
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object at {ctx}"))?;
+        let clause_id = eobj
+            .get("clause_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {ctx}.clause_id"))?;
+        let proofs = eobj
+            .get("proofs")
+            .ok_or_else(|| anyhow!("Missing {ctx}.proofs"))?
+            .as_array()
+            .ok_or_else(|| anyhow!("Expected array at {ctx}.proofs"))?;
+
+        // Count as "proven" only if there is at least one proof entry.
+        if !proofs.is_empty() {
+            proven.insert(clause_id.to_string());
+        }
+    }
+
+    Ok(proven)
+}
+
+fn run_checked(program: &str, args: &[&str], dir: &Path) -> Result<()> {
+    println!("==> (cd {}) {} {}", dir.display(), program, args.join(" "));
+    let status = Command::new(program)
+        .args(args)
+        .current_dir(dir)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .with_context(|| format!("Failed to start {program}"))?;
+
+    if !status.success() {
+        let code = status.code().unwrap_or(1);
+        return Err(anyhow!("{program} exited with code {code}"));
+    }
+
+    Ok(())
+}
+
+fn rust_checks_dir(repo_root: &Path) -> Option<PathBuf> {
+    if repo_root.join("Cargo.toml").exists() {
+        return Some(repo_root.to_path_buf());
+    }
+
+    // Fallback: this repo is tooling-only; at least keep `xtask` green.
+    let xtask_dir = repo_root.join("xtask");
+    if xtask_dir.join("Cargo.toml").exists() {
+        return Some(xtask_dir);
+    }
+
+    None
+}
+
+fn run_rust_checks(repo_root: &Path) -> Result<()> {
+    let Some(dir) = rust_checks_dir(repo_root) else {
+        return Err(anyhow!(
+            "No Rust workspace found (expected Cargo.toml at repo root)"
+        ));
+    };
+
+    run_checked("cargo", &["fmt", "--check"], &dir)?;
+    run_checked("cargo", &["clippy", "--", "-D", "warnings"], &dir)?;
+    run_checked("cargo", &["test"], &dir)?;
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+enum PackageManager {
+    Pnpm,
+    Yarn,
+    Npm,
+}
+
+fn find_frontend_dir(repo_root: &Path) -> Option<PathBuf> {
+    let candidates = [
+        repo_root.to_path_buf(),
+        repo_root.join("frontend"),
+        repo_root.join("web"),
+        repo_root.join("ui"),
+    ];
+
+    candidates
+        .into_iter()
+        .find(|dir| dir.join("package.json").exists())
+}
+
+fn detect_package_manager(dir: &Path) -> PackageManager {
+    if dir.join("pnpm-lock.yaml").exists() {
+        return PackageManager::Pnpm;
+    }
+    if dir.join("yarn.lock").exists() {
+        return PackageManager::Yarn;
+    }
+    PackageManager::Npm
+}
+
+fn has_script(package_json: &Value, name: &str) -> bool {
+    package_json
+        .get("scripts")
+        .and_then(|v| v.as_object())
+        .and_then(|scripts| scripts.get(name))
+        .and_then(|v| v.as_str())
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false)
+}
+
+fn run_typescript_checks(repo_root: &Path) -> Result<()> {
+    let Some(dir) = find_frontend_dir(repo_root) else {
+        println!("(no frontend package.json detected; skipping TypeScript checks)");
+        return Ok(());
+    };
+
+    let package_json_path = dir.join("package.json");
+    let package_json = read_json(&package_json_path)
+        .with_context(|| format!("Failed to read {}", package_json_path.display()))?;
+
+    let pm = detect_package_manager(&dir);
+    let (label, exe) = match pm {
+        PackageManager::Pnpm => ("pnpm", "pnpm"),
+        PackageManager::Yarn => ("yarn", "yarn"),
+        PackageManager::Npm => ("npm", "npm"),
+    };
+
+    println!(
+        "==> frontend detected at {} (package manager: {label})",
+        dir.display()
+    );
+
+    let checks = ["lint", "test", "build"];
+    for script in checks {
+        if !has_script(&package_json, script) {
+            println!("(no {script} script; skipping)");
+            continue;
+        }
+
+        match pm {
+            PackageManager::Pnpm | PackageManager::Yarn => {
+                run_checked(exe, &[script], &dir)?;
+            }
+            PackageManager::Npm => {
+                if script == "test" {
+                    run_checked(exe, &["test"], &dir)?;
+                } else {
+                    run_checked(exe, &["run", script], &dir)?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn collects_clause_ids_across_contract() {
+        let contract = json!({
+            "interfaces": {
+                "commands": [
+                    {
+                        "name": "cmd",
+                        "preconditions": [
+                            { "id": "P1", "statement": "s", "enforcement": "rust_test", "obligation": "caller" }
+                        ],
+                        "postconditions": [
+                            { "id": "Q1", "statement": "t", "enforcement": "rust_test", "obligation": "system" }
+                        ],
+                        "errors": [
+                            { "id": "E1", "code": "INVALID", "when": "w", "enforcement": "rust_test", "obligation": "system" }
+                        ]
+                    }
+                ]
+            },
+            "data_contracts": [
+                {
+                    "name": "entity",
+                    "schema": "schema.json",
+                    "invariants": [
+                        { "id": "I1", "statement": "inv", "enforcement": "rust_test", "obligation": "system" }
+                    ]
+                }
+            ],
+            "system_invariants": [
+                { "id": "SI1", "statement": "sys", "enforcement": "rust_test", "obligation": "system" }
+            ],
+            "acceptance_tests": [
+                { "id": "AT-1", "description": "", "proves": ["P1", "Q1"] }
+            ]
+        });
+
+        let ids = collect_contract_clause_ids(&contract).unwrap();
+        assert!(ids.contains("P1"));
+        assert!(ids.contains("Q1"));
+        assert!(ids.contains("E1"));
+        assert!(ids.contains("I1"));
+        assert!(ids.contains("SI1"));
+
+        validate_acceptance_test_proves(&contract, &ids).unwrap();
+    }
+
+    #[test]
+    fn rejects_duplicate_clause_ids() {
+        let contract = json!({
+            "interfaces": {
+                "commands": [
+                    {
+                        "name": "cmd",
+                        "preconditions": [
+                            { "id": "DUP", "statement": "s", "enforcement": "rust_test", "obligation": "caller" }
+                        ],
+                        "postconditions": [
+                            { "id": "DUP", "statement": "t", "enforcement": "rust_test", "obligation": "system" }
+                        ],
+                        "errors": []
+                    }
+                ]
+            },
+            "acceptance_tests": []
+        });
+
+        let err = collect_contract_clause_ids(&contract).unwrap_err();
+        assert!(err.to_string().contains("Duplicate clause ids"));
+    }
+
+    #[test]
+    fn proven_clause_ids_require_non_empty_proofs() {
+        let evidence = json!({
+            "contract_id": "0001",
+            "clause_proofs": [
+                { "clause_id": "P1", "proofs": [ { "kind": "test", "location": "x" } ] },
+                { "clause_id": "Q1", "proofs": [] }
+            ]
+        });
+
+        let proven = collect_proven_clause_ids(&evidence).unwrap();
+        assert!(proven.contains("P1"));
+        assert!(!proven.contains("Q1"));
+    }
 }

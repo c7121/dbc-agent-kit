@@ -5,7 +5,8 @@
   "artifact_paths": {
     "task": ".cbd/tasks/0001-<slug>.md",
     "contract": ".cbd/contracts/0001.contract.json",
-    "evidence": ".cbd/reports/0001.evidence.md"
+    "evidence": ".cbd/reports/0001.evidence.md",
+    "evidence_json": ".cbd/reports/0001.evidence.json"
   },
   "loop": [
     {

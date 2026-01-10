@@ -13,12 +13,23 @@ agents must write down **preconditions, postconditions, invariants, and error be
 
 ## Quickstart
 - Scaffold a new task bundle:
-  - `python .cbd/scripts/new_task.py --id 0001 --slug data-orchestration`
+  - `cargo run --manifest-path xtask/Cargo.toml -- cbd new-task --id 0001 --slug data-orchestration`
 - CONTRACT mode produces/iterates:
   - `.cbd/contracts/<id>.contract.json`
   - `.cbd/bundles/<id>.bundle.json`
 - BUILD mode implements and produces:
-  - `.cbd/reports/<id>.evidence.md`
+  - `.cbd/reports/<id>.evidence.json`
+  - (optional) `.cbd/reports/<id>.evidence.md`
+
+## Hard gate
+CI/verification must use:
+- `cargo run --manifest-path xtask/Cargo.toml -- cbd verify --id <id>`
+
+`xtask cbd verify` fails if:
+- contract is not `ready` or has `open_questions`
+- any contract clause id lacks proof in `.cbd/reports/<id>.evidence.json`
+- Rust checks fail (`cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`)
+- TS checks fail (only if a frontend `package.json` exists, and only for scripts that exist: `lint`, `test`, `build`)
 
 ## Workflow (two modes)
 ### CONTRACT mode (no code changes)
@@ -46,7 +57,8 @@ Rules:
   - a proving **test**, or
   - a runtime **assertion** (and ideally both for critical invariants).
 - Produce/maintain an evidence report:
-  - `.cbd/reports/<id>.evidence.md` mapping **contract clause → code/test location**
+  - `.cbd/reports/<id>.evidence.json` mapping **clause id → proof locations**
+  - (optional) `.cbd/reports/<id>.evidence.md` as narrative + command output
 - Run checks and include output (or a link to logs) in the evidence report.
 - No unrelated diffs.
 
@@ -56,7 +68,7 @@ Rules:
 - `.cbd/contracts/0001.contract.json` — Design‑by‑Contract artifact
 - `.cbd/prompts/` — saved prompts for CONTRACT and BUILD modes
 - `.cbd/reports/` — evidence packs (what proves what)
-- `.cbd/scripts/` — small helpers (scaffold/validate)
+- `xtask/` — Rust automation helpers (scaffold/verify)
 
 ## Conventional Commits + git-cliff
 - All commits MUST follow Conventional Commits: `https://www.conventionalcommits.org/`.
@@ -87,10 +99,14 @@ Typical commands (verify in `package.json` scripts):
 ## Definition of Done
 - Contract status = `implemented`
 - Acceptance tests listed in the contract are implemented and passing
-- Evidence report exists and is consistent with the diff
+- Evidence pack exists and is consistent with the diff (`.cbd/reports/<id>.evidence.json`)
 - No unrelated diffs
 
 ## Safety
 - Never read secrets or `.env` files (or anything that looks like credentials).
 - No dependency additions without approval.
 - No schema migrations without an explicit plan + rollback.
+
+## Enforcement idioms
+- Rust enforcement is authoritative (source of truth for correctness/security invariants).
+- TypeScript enforcement is UX-only (early validation, better errors), and must not be the sole enforcement of a contract clause.

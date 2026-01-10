@@ -1,0 +1,16 @@
+{
+  "contract_id": "0001",
+  "clause_proofs": [],
+  "examples": [
+    {
+      "clause_id": "CMD-1-PRE-1",
+      "proofs": [
+        {
+          "kind": "test|assertion|manual",
+          "location": "<path:line or test name>",
+          "details": "<optional>"
+        }
+      ]
+    }
+  ]
+}

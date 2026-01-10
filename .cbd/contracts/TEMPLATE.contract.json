@@ -12,12 +12,29 @@
         "name": "<command or endpoint name>",
         "input_schema": "<path or inline schema>",
         "output_schema": "<path or inline schema>",
-        "preconditions": [],
-        "postconditions": [],
+        "preconditions": [
+          {
+            "id": "CMD-1-PRE-1",
+            "statement": "<condition>",
+            "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+            "obligation": "<caller|system|both>"
+          }
+        ],
+        "postconditions": [
+          {
+            "id": "CMD-1-POST-1",
+            "statement": "<guarantee>",
+            "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+            "obligation": "<system>"
+          }
+        ],
         "errors": [
           {
-            "code": "<ERROR_CODE>",
+            "id": "CMD-1-ERR-1",
+            "code": "INVALID_ARGUMENT",
             "when": "<condition>",
+            "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+            "obligation": "<system>",
             "response": "<shape/fields>"
           }
         ]
@@ -28,10 +45,24 @@
     {
       "name": "<entity/event>",
       "schema": "<path or inline schema>",
-      "invariants": []
+      "invariants": [
+        {
+          "id": "DC-1-INV-1",
+          "statement": "<invariant>",
+          "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+          "obligation": "<system>"
+        }
+      ]
     }
   ],
-  "system_invariants": [],
+  "system_invariants": [
+    {
+      "id": "SYS-INV-1",
+      "statement": "<invariant>",
+      "enforcement": "<rust_assert|rust_test|ts_ux|manual>",
+      "obligation": "<system>"
+    }
+  ],
   "observability": {
     "logs": [],
     "metrics": [],
@@ -41,7 +72,9 @@
     {
       "id": "AT-1",
       "description": "",
-      "proves": []
+      "proves": [
+        "CMD-1-PRE-1"
+      ]
     }
   ],
   "open_questions": [],
@@ -49,6 +82,7 @@
   "definition_of_done": [
     "open_questions is empty",
     "acceptance_tests implemented and passing",
-    "each pre/post/invariant/error has a proving test or runtime assertion"
+    "each clause id in pre/post/invariants/errors has a proof entry in evidence.json",
+    "Rust enforcement is authoritative; TypeScript enforcement is UX-only"
   ]
 }

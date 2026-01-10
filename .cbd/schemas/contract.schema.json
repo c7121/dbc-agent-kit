@@ -12,7 +12,8 @@
   ],
   "properties": {
     "id": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "title": {
       "type": "string"
@@ -24,6 +25,29 @@
         "ready",
         "implemented"
       ]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "interfaces": {
+      "$ref": "#/$defs/interfaces"
+    },
+    "data_contracts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/data_contract"
+      }
+    },
+    "system_invariants": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/clause"
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": true
     },
     "open_questions": {
       "type": "array",
@@ -40,26 +64,181 @@
     "acceptance_tests": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": [
-          "id",
-          "description"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "proves": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+        "$ref": "#/$defs/acceptance_test"
+      }
+    },
+    "definition_of_done": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "clause": {
+      "type": "object",
+      "required": [
+        "id",
+        "statement",
+        "enforcement",
+        "obligation"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "obligation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "error_clause": {
+      "type": "object",
+      "required": [
+        "id",
+        "code",
+        "when",
+        "enforcement",
+        "obligation"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "code": {
+          "$ref": "#/$defs/id"
+        },
+        "when": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "obligation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "response": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "command": {
+      "type": "object",
+      "required": [
+        "name",
+        "preconditions",
+        "postconditions",
+        "errors"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_schema": {
+          "type": "string"
+        },
+        "output_schema": {
+          "type": "string"
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clause"
+          }
+        },
+        "postconditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clause"
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/error_clause"
           }
         }
-      }
+      },
+      "additionalProperties": true
+    },
+    "interfaces": {
+      "type": "object",
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "data_contract": {
+      "type": "object",
+      "required": [
+        "name",
+        "schema",
+        "invariants"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema": {
+          "type": "string"
+        },
+        "invariants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clause"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "acceptance_test": {
+      "type": "object",
+      "required": [
+        "id",
+        "description",
+        "proves"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "description": {
+          "type": "string"
+        },
+        "proves": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

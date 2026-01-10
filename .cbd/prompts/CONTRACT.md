@@ -47,9 +47,13 @@ When drafting `.cbd/contracts/<id>.contract.json`:
 - For each interface:
   - Preconditions: validation, authz, existence checks, idempotency, rate limits (if relevant)
   - Postconditions: persisted state, emitted events, returned values
-  - Errors: explicit codes + when they occur + caller-facing semantics
+  - Errors: explicit ids + codes + when they occur + caller-facing semantics
 - Add system invariants (things that must always hold).
-- Add acceptance tests that prove the contract (map each test to the clauses it proves).
+- Write every clause as a structured object with a stable `id`:
+  - Preconditions/Postconditions/Invariants: `{ id, statement, enforcement, obligation }`
+  - Errors: `{ id, code, when, enforcement, obligation }`
+  - `enforcement` must be explicit (Rust is authoritative; TS is UX-only).
+- Add acceptance tests that prove the contract (map each test to the clause ids it proves).
 - If something is unknown, put it in `open_questions` and ask the human (2–3 max per round).
 
 ## How to write the bundle

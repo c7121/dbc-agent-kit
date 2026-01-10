@@ -1,25 +1,27 @@
 # Evidence Pack — <ID>
 
+Canonical (machine-checkable) evidence:
+- `.cbd/reports/<ID>.evidence.json`
+
 ## Repo Recon
 - Relevant files:
   - <path>: <why it's relevant>
 
 ## Contract clause → proof mapping
-For each clause below, link to:
-- code location(s)
-- test(s) and/or runtime assertion(s)
+Source of truth is `.cbd/reports/<ID>.evidence.json` (`clause_proofs[]`).
+This markdown file is optional/human-friendly; keep it consistent with the JSON.
 
 ### Preconditions
-- <clause> → <file:line>, <test>
+- <CLAUSE_ID>: <statement> → <file:line>, <test/assertion>
 
 ### Postconditions
-- <clause> → <file:line>, <test>
+- <CLAUSE_ID>: <statement> → <file:line>, <test/assertion>
 
 ### Invariants
-- <clause> → <file:line>, <test/assert>
+- <CLAUSE_ID>: <statement> → <file:line>, <test/assertion>
 
 ### Errors
-- <ERROR_CODE>: <when> → <handler>, <test>
+- <CLAUSE_ID> (<ERROR_CODE>): <when> → <handler>, <test>
 
 ## Commands run + outputs
 

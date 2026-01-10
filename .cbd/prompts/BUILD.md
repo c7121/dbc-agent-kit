@@ -25,8 +25,9 @@ Prove every clause with tests and/or runtime assertions, and produce an evidence
 - For each contract clause (pre/post/invariant/error/acceptance test), add:
   - a proving test, or
   - a runtime assertion (ideally both for critical invariants).
-- Produce `.cbd/reports/<id>.evidence.md` mapping **clause → proof location(s)**.
-- Run Rust + TS checks and paste outputs into the evidence report.
+- Produce `.cbd/reports/<id>.evidence.json` mapping **clause id → proof location(s)** (required for verification).
+- Optionally maintain `.cbd/reports/<id>.evidence.md` as a human-friendly narrative that references the JSON.
+- Run the hard gate: `cargo run --manifest-path xtask/Cargo.toml -- cbd verify --id <id>` (and paste outputs into the evidence report).
 - Do not declare done unless acceptance tests pass.
 - No unrelated diffs. No “drive-by refactors.”
 - No new dependencies, migrations, or secret reads unless explicitly approved in `AGENTS.md`.
@@ -86,8 +87,13 @@ In BUILD mode, if you discover missing decisions, contradictions, or unimplement
 5) STOP. Do not proceed with implementation until CONTRACT mode resolves the questions.
 
 ## Evidence pack requirements
-`.cbd/reports/<id>.evidence.md` must include:
-- Contract clause → test/assertion mapping (file + test name)
+`.cbd/reports/<id>.evidence.json` must include:
+- Every contract clause id (pre/post/invariants/errors) with at least one proof entry
+- Proof locations (file path + line and/or test name)
+
+If you also write `.cbd/reports/<id>.evidence.md`, it must include:
+- A pointer to `.cbd/reports/<id>.evidence.json`
+- Any optional narrative/context
 - Commands run (exact commands) + output:
   - Rust: `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`
   - TS: detect package manager, then run the repo’s scripts (`lint/test/build` as applicable)

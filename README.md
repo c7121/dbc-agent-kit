@@ -6,5 +6,5 @@ See `.cbd/README.md` for the workflow and artifacts under `.cbd/`.
 
 Quickstart:
 ```bash
-python .cbd/scripts/new_task.py --id 0001 --slug data-orchestration
+cargo run --manifest-path xtask/Cargo.toml -- cbd new-task --id 0001 --slug data-orchestration
 ```
