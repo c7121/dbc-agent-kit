@@ -20,7 +20,7 @@ cargo run --manifest-path xtask/Cargo.toml -- cbd new-task --id 0001 --slug data
 Your working pattern can be:
 
 1) Use Codex to create/update a task seed in `.cbd/tasks/<id>-*.md` (short, human‑written intent + context).
-2) Zip the repo and upload it to GPT‑5.2 Pro (Thinking) to run **CONTRACT mode**:
+2) Use GPT‑5.2 Pro (Thinking) to run **CONTRACT mode**:
    - GPT produces `.cbd/contracts/<id>.contract.json` and `.cbd/bundles/<id>.bundle.json`
    - GPT asks up to 3 blocking questions per round (then waits) until the contract is `ready`
 3) Use Codex to run **BUILD mode**:

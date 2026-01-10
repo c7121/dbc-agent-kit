@@ -28,7 +28,7 @@ Completion condition:
 - evidence pack maps every contract clause id to a proving test/assertion
 - contract can be updated to `status: "implemented"`
 
-## Suggested “zip & review” cadence
+## Suggested cadence (planning ↔ execution ↔ review)
 1) Codex: create task file
 2) GPT‑5.2 Pro: CONTRACT mode (ask/answer until ready)
 3) Codex: BUILD mode (implement + prove + run `cargo run --manifest-path xtask/Cargo.toml -- cbd verify --id <id>`)

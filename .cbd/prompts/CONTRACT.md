@@ -24,7 +24,7 @@ Inputs you should read first (prefer tools/repo facts over guessing):
 - relevant code paths & existing patterns (search, grep, read files)
 
 ## Hard rules
-- **Ask 2–3 blocking questions PER ROUND**, then STOP and wait for the human’s answers.
+- If you have questions that need to be answered limit to **ONLY 2–3 blocking questions PER ROUND**, then STOP and wait for the human’s answers.
   - Do not ask a 4th question in the same round.
   - Repeat rounds until `open_questions` is empty.
 - Each question MUST include:
@@ -57,18 +57,40 @@ When drafting `.cbd/contracts/<id>.contract.json`:
 - If something is unknown, put it in `open_questions` and ask the human (2–3 max per round).
 
 ## Verification hierarchy (how to choose enforcement)
-Principle: prefer **STATIC > TEST > DEBUG > RUNTIME**.
+DbC clauses are meant to be **checkable predicates** (preconditions, postconditions, invariants, errors).
+If a statement cannot be checked (by types, compile-time checks, tests, debug assertions, or runtime guards),
+it should **not** be written as a clause. Instead, rewrite/split it into checkable predicates, or put it in
+`assumptions` / `open_questions` (see decision flow).
 
-Decision flow (pick the first that works):
-1) Can types encode it? → `enforcement: "static"`
+Principle: prefer **STATIC > TEST > DEBUG > RUNTIME** for enforcement.
+
+### What each enforcement level is for (property → enforcement mapping)
+Use this table when choosing `enforcement` for a clause:
+
+| Property / intent | Use `enforcement` | Typical mechanism (Rust authoritative) | Notes |
+|---|---|---|---|
+| Null/type safety; domain typing (IDs, amounts, states) | `static` | newtypes + `TryFrom`; enums; `Option`/`Result`; typestate | Prefer “make invalid states unrepresentable.” |
+| Exhaustiveness / impossible states | `static` | `match` exhaustiveness; `!` where applicable | Compile-time is better than any runtime check. |
+| Trait/interface bounds; const bounds; size/alignment constraints | `static` | type system; const assertions; compile-time checks | Rare but valid for critical invariants. |
+| Expensive O(n)+ validations; large fixtures; cross-system equivalence | `test` | integration tests; property tests; reference impl comparisons | Keep production fast; prove via tests. |
+| Internal invariants that help catch bugs during development | `debug` | `debug_assert!` / debug-only checks | Use when too expensive/noisy for release. |
+| Public API boundary validation (untrusted input); security/safety invariants | `runtime` | boundary validation + typed errors; reject invalid inputs | Rust is authoritative; TS is UX-only. |
+| Safety-critical postconditions that downstream depends on | `runtime` or `test` | tests for coverage; runtime checks only if needed | Prefer tests unless production enforcement is required. |
+
+### Decision flow (pick the first that fits)
+1) Can types encode it? → `enforcement: "static"` (prefer newtypes/typestate/enums)
 2) Else can a compile-time check enforce it? → `enforcement: "static"`
-3) Else is it expensive/slow (integration, large fixtures, non-local)? → `enforcement: "test"`
-4) Else is it an internal dev aid / invariant that shouldn’t run in production? → `enforcement: "debug"`
+3) Else is it expensive/slow/non-local? → `enforcement: "test"`
+4) Else is it internal-only and too costly/noisy for production? → `enforcement: "debug"`
 5) Else must it be enforced in production (untrusted input, safety/security invariants)? → `enforcement: "runtime"`
-6) Else consider omitting the clause (or restate it as an assumption/non-goal).
+6) If it still doesn’t fit:
+   - Rewrite/split the statement into checkable predicates, OR
+   - Put it in `open_questions` if it blocks behavior and ask the human (2–3 per round), OR
+   - Put it in `assumptions` if it is an accepted premise about the environment (still tracked explicitly).
 
-Note:
+Notes:
 - Rust enforcement is authoritative; TypeScript is UX-only and cannot be the sole enforcement of `runtime` clauses.
+- Avoid side effects in contract checks: predicates must be pure.
 
 ## How to write the bundle
 The bundle is the “loop checklist” the agent follows.
@@ -85,5 +107,5 @@ In `.cbd/bundles/<id>.bundle.json`, include steps like:
 At the end of each CONTRACT round, you must:
 1) Update/produce the contract JSON and bundle JSON in the repo.
 2) Print a short summary of what changed (1–2 paragraphs) **inside triple backticks** (copy/paste friendly).
-3) Ask **2–3 blocking questions** (or ask 0 if `open_questions` is empty and you can mark `status: "ready"`), also **inside the same triple-backticks block**.
+3) If `open_questions` is non-empty ask at most **2–3 blocking questions** (or ask 0 if `open_questions` is empty and you can mark `status: "ready"`), also **inside the same triple-backticks block**.
 4) STOP.

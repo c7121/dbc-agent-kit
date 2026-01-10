@@ -31,8 +31,6 @@ CI/verification must use:
 - Rust checks fail (`cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`)
 - TS checks fail (only if a frontend `package.json` exists, and only for scripts that exist: `lint`, `test`, `build`)
 
-For archive + output formatting rules, follow .cbd/prompts/BUILD.md (canonical).
-
 ## Workflow (two modes)
 ### CONTRACT mode (no code changes)
 Goal: converge on an implementable contract + a concrete task bundle an agent can loop over.

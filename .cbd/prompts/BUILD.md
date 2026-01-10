@@ -47,15 +47,8 @@ mkdir -p .cbd/exports
 TS="$(date +%Y%m%d-%H%M%S)"
 ARCHIVE=".cbd/exports/<id>-$TS.zip"
 
-# Preferred if git state is clean and commits exist:
+# Do not leave any uncommitted files before running.
 git archive --format=zip --output="$ARCHIVE" HEAD
-
-# If there are uncommitted changes or no commits:
-zip -r "$ARCHIVE" . \
-  -x ".git/*" \
-  -x ".cbd/exports/*" \
-  -x "target/*" -x "*/target/*" \
-  -x "node_modules/*" -x "*/node_modules/*"
 ```
 
 ## Handoff when blocked (important: don’t interrogate the human here)
@@ -64,7 +57,7 @@ In BUILD mode, if you discover missing decisions, contradictions, or unimplement
 
 1) Create `.cbd/reports/<id>.handoff.md` containing:
    - a short summary of the blocker (what you observed)
-   - up to **3 handoff questions** (each with Blocked fields + Decision impacted)
+   - include any handoff questions for the CONTRACT Agent (each with Blocked fields + Decision impacted)
    - any repo evidence (file paths, snippets, failing test output) that explains why it’s blocked
 
 2) Update the contract to reflect reality:
