@@ -14,7 +14,7 @@ import argparse
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+CBD_ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -22,7 +22,7 @@ def main() -> int:
     args = ap.parse_args()
     tid = str(args.id)
 
-    path = ROOT / "contracts" / f"{tid}.contract.json"
+    path = CBD_ROOT / "contracts" / f"{tid}.contract.json"
     if not path.exists():
         print(f"Missing contract: {path}")
         return 2

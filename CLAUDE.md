@@ -7,9 +7,9 @@ Follow the workflow described in:
 - @WORKFLOW.md
 
 Mode prompts (use exactly):
-- @prompts/CONTRACT.md
-- @prompts/BUILD.md
+- @.cbd/prompts/CONTRACT.md
+- @.cbd/prompts/BUILD.md
 
 House rules:
-- Ask at most **3** blocking questions at a time, then wait.
+- Ask at most **3** blocking questions per round, then wait. Repeat until `open_questions` is empty.
 - Do not implement while contract status is `draft`.

@@ -12,21 +12,21 @@ Instead of letting an agent “declare done,” we require concrete artifacts:
 ## Quickstart
 Scaffold a new task bundle (creates task/contract/bundle/evidence files):
 ```bash
-python scripts/new_task.py --id 0001 --slug data-orchestration
+python .cbd/scripts/new_task.py --id 0001 --slug data-orchestration
 ```
 
 ## How to use this with GPT‑5.2 Pro (Thinking) + Codex
 
 Your working pattern can be:
 
-1) Use Codex to create/update a task seed in `tasks/<id>-*.md` (short, human‑written intent + context).
+1) Use Codex to create/update a task seed in `.cbd/tasks/<id>-*.md` (short, human‑written intent + context).
 2) Zip the repo and upload it to GPT‑5.2 Pro (Thinking) to run **CONTRACT mode**:
-   - GPT produces `contracts/<id>.contract.json` and `bundles/<id>.bundle.json`
-   - GPT asks up to 3 blocking questions at a time until the contract is `ready`
+   - GPT produces `.cbd/contracts/<id>.contract.json` and `.cbd/bundles/<id>.bundle.json`
+   - GPT asks up to 3 blocking questions per round (then waits) until the contract is `ready`
 3) Use Codex to run **BUILD mode**:
    - implement the contract
    - add tests/assertions
-   - generate `reports/<id>.evidence.md`
+   - generate `.cbd/reports/<id>.evidence.md`
    - run checks (Rust + TS)
 4) Optionally upload the updated repo back to GPT‑5.2 Pro (Thinking) for review + patch suggestions.
 

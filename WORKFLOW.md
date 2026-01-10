@@ -5,22 +5,22 @@ This workflow is designed to work well with:
 - **Codex** (and/or Claude Code) for implementation and running commands
 
 ## Files that drive the process
-- `tasks/<id>-*.md` — short task seed (goal/context/constraints)
-- `contracts/<id>.contract.json` — Design‑by‑Contract spec (pre/post/invariants/errors/tests)
-- `bundles/<id>.bundle.json` — the step-by-step loop the agent must execute
-- `reports/<id>.evidence.md` — mapping from contract clauses to proving code/tests
+- `.cbd/tasks/<id>-*.md` — short task seed (goal/context/constraints)
+- `.cbd/contracts/<id>.contract.json` — Design‑by‑Contract spec (pre/post/invariants/errors/tests)
+- `.cbd/bundles/<id>.bundle.json` — the step-by-step loop the agent must execute
+- `.cbd/reports/<id>.evidence.md` — mapping from contract clauses to proving code/tests
 
 ## CONTRACT mode
-Input: `tasks/<id>-*.md` + repo
-Output: `contracts/<id>.contract.json`, `bundles/<id>.bundle.json`, and up to 3 blocking questions
+Input: `.cbd/tasks/<id>-*.md` + repo
+Output: `.cbd/contracts/<id>.contract.json`, `.cbd/bundles/<id>.bundle.json`, and up to 3 blocking questions per round (then wait; repeat until `open_questions` is empty)
 
 Completion condition:
-- `contracts/<id>.contract.json` has `status: "ready"`
+- `.cbd/contracts/<id>.contract.json` has `status: "ready"`
 - `open_questions` is empty
 
 ## BUILD mode
 Precondition: contract is `ready`
-Output: code + tests + `reports/<id>.evidence.md`
+Output: code + tests + `.cbd/reports/<id>.evidence.md`
 
 Completion condition:
 - tests pass

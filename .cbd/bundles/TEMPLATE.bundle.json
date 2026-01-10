@@ -3,9 +3,9 @@
   "title": "<short title>",
   "status": "draft",
   "artifact_paths": {
-    "task": "tasks/0001-<slug>.md",
-    "contract": "contracts/0001.contract.json",
-    "evidence": "reports/0001.evidence.md"
+    "task": ".cbd/tasks/0001-<slug>.md",
+    "contract": ".cbd/contracts/0001.contract.json",
+    "evidence": ".cbd/reports/0001.evidence.md"
   },
   "loop": [
     {
@@ -29,7 +29,7 @@
         "Existing conventions captured (errors, logging, validation)"
       ],
       "evidence": [
-        "reports/<id>.evidence.md section: Repo Recon"
+        ".cbd/reports/<id>.evidence.md section: Repo Recon"
       ]
     },
     {
@@ -41,12 +41,12 @@
         "contract has acceptance_tests IDs and descriptions"
       ],
       "evidence": [
-        "contracts/<id>.contract.json"
+        ".cbd/contracts/<id>.contract.json"
       ]
     },
     {
       "step": "ask_blocking_questions",
-      "description": "Ask up to 3 questions that block making the contract ready.",
+      "description": "Ask up to 3 blocking questions per round; stop and wait after questions; repeat until open_questions is empty.",
       "status": "todo",
       "exit_criteria": [
         "All blocking decisions resolved OR explicitly recorded as assumptions",
@@ -66,7 +66,7 @@
         "contract.open_questions is empty"
       ],
       "evidence": [
-        "contracts/<id>.contract.json"
+        ".cbd/contracts/<id>.contract.json"
       ]
     },
     {
@@ -89,7 +89,7 @@
         "Checks pass"
       ],
       "evidence": [
-        "reports/<id>.evidence.md outputs"
+        ".cbd/reports/<id>.evidence.md outputs"
       ]
     },
     {
@@ -100,7 +100,7 @@
         "Evidence pack complete and consistent"
       ],
       "evidence": [
-        "reports/<id>.evidence.md"
+        ".cbd/reports/<id>.evidence.md"
       ]
     },
     {
@@ -111,7 +111,7 @@
         "contract.status == implemented"
       ],
       "evidence": [
-        "contracts/<id>.contract.json"
+        ".cbd/contracts/<id>.contract.json"
       ]
     }
   ]
