@@ -1,0 +1,193 @@
+{
+  "id": "<REVIEW_ID>",
+  "slug": "<slug>",
+  "title": "<TITLE>",
+  "status": "draft",
+  "artifact_paths": {
+    "seed": ".cbd/reviews/<REVIEW_ID>-<slug>/review.seed.md",
+    "bundle": ".cbd/reviews/<REVIEW_ID>-<slug>/review.bundle.json",
+    "contract_map": ".cbd/reviews/<REVIEW_ID>-<slug>/contract-map.md",
+    "invariants": ".cbd/reviews/<REVIEW_ID>-<slug>/invariants.md",
+    "assets": ".cbd/reviews/<REVIEW_ID>-<slug>/assets.md",
+    "dfd": ".cbd/reviews/<REVIEW_ID>-<slug>/dfd.md",
+    "abuse_cases": ".cbd/reviews/<REVIEW_ID>-<slug>/abuse-cases.md",
+    "identity_authz": ".cbd/reviews/<REVIEW_ID>-<slug>/identity-authz.md",
+    "secrets_keys": ".cbd/reviews/<REVIEW_ID>-<slug>/secrets-keys.md",
+    "reliability_failure": ".cbd/reviews/<REVIEW_ID>-<slug>/reliability-failure.md",
+    "observability_audit": ".cbd/reviews/<REVIEW_ID>-<slug>/observability-audit.md",
+    "supply_chain": ".cbd/reviews/<REVIEW_ID>-<slug>/supply-chain.md",
+    "stride": ".cbd/reviews/<REVIEW_ID>-<slug>/threats.stride.md",
+    "linddun": ".cbd/reviews/<REVIEW_ID>-<slug>/privacy.linddun.md",
+    "asvs": ".cbd/reviews/<REVIEW_ID>-<slug>/controls.asvs.md",
+    "findings": ".cbd/reviews/<REVIEW_ID>-<slug>/findings.tasklist.json"
+  },
+  "phases": {
+    "plan": [
+      {
+        "step": "scope",
+        "status": "todo",
+        "notes": "Confirm what is being reviewed, in/out of scope, assumptions."
+      },
+      {
+        "step": "inputs",
+        "status": "todo",
+        "notes": "Collect PRD links, repo/commit/PR, diagrams/docs."
+      },
+      {
+        "step": "setup_artifacts",
+        "status": "todo",
+        "notes": "Copy templates into the review folder and fill seed."
+      }
+    ],
+    "review": [
+      {
+        "id": "WI-001",
+        "owner": "review",
+        "description": "Build contract surfaces & boundary map (entrypoints, trust boundaries, external deps).",
+        "outputs": [
+          "contract-map.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-002",
+        "owner": "review",
+        "description": "Catalog invariants (system/domain/safety) with enforcement and detection points.",
+        "outputs": [
+          "invariants.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-003",
+        "owner": "review",
+        "description": "Create asset inventory and data classification/redaction policy notes.",
+        "outputs": [
+          "assets.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-004",
+        "owner": "review",
+        "description": "Write DFD notes: entities/processes/data stores/flows + explicit trust boundaries.",
+        "outputs": [
+          "dfd.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-005",
+        "owner": "review",
+        "description": "Enumerate abuse/misuse cases (negative scenarios) per entrypoint.",
+        "outputs": [
+          "abuse-cases.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-006",
+        "owner": "review",
+        "description": "Review identity/authn/authz model: roles, enforcement points, replay protections.",
+        "outputs": [
+          "identity-authz.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-007",
+        "owner": "review",
+        "description": "Review secrets/key management: custody, rotation, redaction, signing boundaries.",
+        "outputs": [
+          "secrets-keys.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-008",
+        "owner": "review",
+        "description": "Review reliability/failure semantics: retries, idempotency, restarts, bounds.",
+        "outputs": [
+          "reliability-failure.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-009",
+        "owner": "review",
+        "description": "Review observability/auditability: logging, metrics, traces, audit trails.",
+        "outputs": [
+          "observability-audit.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-010",
+        "owner": "review",
+        "description": "Review supply-chain/dependency risk: high-risk deps, provenance, update strategy.",
+        "outputs": [
+          "supply-chain.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-011",
+        "owner": "review",
+        "description": "Run STRIDE threat modeling using the DFD; produce threats + mitigations.",
+        "outputs": [
+          "threats.stride.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-012",
+        "owner": "review",
+        "description": "Run LINDDUN privacy threat modeling (skip with justification if not applicable).",
+        "outputs": [
+          "privacy.linddun.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-013",
+        "owner": "review",
+        "description": "Map control coverage using OWASP ASVS (optional but recommended for apps/services).",
+        "outputs": [
+          "controls.asvs.md"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-014",
+        "owner": "review",
+        "description": "Create findings backlog (machine-readable) with severities and recommended tasks.",
+        "outputs": [
+          "findings.tasklist.json"
+        ],
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "id": "WI-015",
+        "owner": "review",
+        "description": "Optional: promote accepted findings into `.cbd/tasks/*` and link back to this review.",
+        "outputs": [],
+        "status": "todo",
+        "notes": "Do not create task IDs/files unless the human requests promotion."
+      }
+    ]
+  }
+}

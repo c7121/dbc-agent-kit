@@ -1,0 +1,28 @@
+{
+  "review_id": "<REVIEW_ID>",
+  "slug": "<slug>",
+  "title": "<TITLE>",
+  "status": "draft",
+  "findings": [
+    {
+      "id": "F-001",
+      "title": "Example finding title",
+      "type": "security",
+      "category": "STRIDE:T",
+      "severity": "high",
+      "description": "What is wrong / missing, written clearly.",
+      "impacted_assets": [
+        "ASSET-001"
+      ],
+      "recommended_mitigation": "What should be done.",
+      "recommended_tasks": [
+        {
+          "task_slug": "add-idempotency-key",
+          "title": "Add idempotency keys at boundary X",
+          "notes": "Promote this into .cbd/tasks/* and run CONTRACT mode."
+        }
+      ],
+      "status": "open"
+    }
+  ]
+}
