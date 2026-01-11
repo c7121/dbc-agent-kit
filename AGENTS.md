@@ -46,6 +46,23 @@ CI/verification must use:
 - When proposing changes, always include a suggested commit message in Conventional Commit format.
 - Changelog is generated with git-cliff; do not hand-edit `CHANGELOG.md`.
 
+## Export archive (canonical)
+When asked to zip or archive the repo, use `git archive` (preferred) or fall back to `zip` with exclusions:
+```bash
+# Preferred: tracked files only, respects .gitignore
+git archive --format=zip --output="<name>.zip" HEAD
+
+# Fallback (if uncommitted changes must be included):
+zip -r "<name>.zip" . \
+  -x ".git/*" \
+  -x "target/*" \
+  -x "node_modules/*" \
+  -x ".cbd/exports/*" \
+  -x ".env" -x ".env.*" -x ".envrc" \
+  -x "*.pem" -x "*.key" -x "*.p12" \
+  -x "secrets/*"
+```
+
 ## Safety
 - Never read secrets or `.env` files (or anything that looks like credentials).
 - No dependency additions without approval.
