@@ -49,18 +49,27 @@ CI/verification must use:
 ## Export archive (canonical)
 When asked to zip or archive the repo, use `git archive` (preferred) or fall back to `zip` with exclusions:
 ```bash
-# Preferred: tracked files only, respects .gitignore
-git archive --format=zip --output="<name>.zip" HEAD
+mkdir -p .cbd/exports
+TS="$(date +%Y%m%d-%H%M%S)"
+ARCHIVE=".cbd/exports/<id>-$TS.zip"
 
-# Fallback (if uncommitted changes must be included):
-zip -r "<name>.zip" . \
-  -x ".git/*" \
-  -x "target/*" \
-  -x "node_modules/*" \
-  -x ".cbd/exports/*" \
-  -x ".env" -x ".env.*" -x ".envrc" \
-  -x "*.pem" -x "*.key" -x "*.p12" \
-  -x "secrets/*"
+# Preferred: if the working tree is clean, export the exact HEAD snapshot (tracked files only).
+if [ -z "$(git status --porcelain)" ]; then
+  git archive --format=zip --output="$ARCHIVE" HEAD
+else
+  # Fallback: include uncommitted changes for review.
+  # Be careful to exclude secrets and build artifacts.
+  zip -r "$ARCHIVE" . \
+    -x ".git/*" \
+    -x "target/*" \
+    -x "node_modules/*" \
+    -x ".cbd/exports/*" \
+    -x ".env" -x ".env.*" -x ".envrc" \
+    -x "*.pem" -x "*.key" -x "*.p12" \
+    -x "secrets/*"
+fi
+
+echo "Archive: $ARCHIVE"
 ```
 
 ## Safety
