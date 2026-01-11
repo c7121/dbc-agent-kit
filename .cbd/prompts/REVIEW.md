@@ -53,7 +53,8 @@ cp -R .cbd/reviews/TEMPLATE/* .cbd/reviews/R-0001-login-redesign/
 
 3) Edit the copied files:
 - `.cbd/reviews/R-0001-login-redesign/review.seed.md` (fill scope, assets, links)
-- `.cbd/reviews/R-0001-login-redesign/review.bundle.json` (replace `<REVIEW_ID>`, `<slug>`, `<TITLE>`)
+- `.cbd/reviews/R-0001-login-redesign/components.md` (system decomposition + choose component_mode)
+- `.cbd/reviews/R-0001-login-redesign/review.bundle.json` (replace `<REVIEW_ID>`, `<slug>`, `<TITLE>`; set component_mode and frameworks)
 
 4) Start the review by completing the PLAN steps first (`phases.plan[]`), then proceed to REVIEW work items (`phases.review[]`).
 
@@ -65,6 +66,38 @@ cp -R .cbd/reviews/TEMPLATE/* .cbd/reviews/R-0001-login-redesign/
   - Never ask more than 3 questions in a single message.
 - Every session must update files in the repo (artifacts + bundle status).
 - Prefer facts from repo/docs over guessing.
+
+## Multi-component reviews (how to stay thorough without becoming scattered)
+
+If the system under review has multiple components/containers (services, workers, UIs, shared libraries, data stores),
+you MUST avoid one giant, mixed document that is impossible to reason about.
+
+Instead, do this during PLAN:
+
+1) In `phases.plan.decompose_system`, write `components.md` and list the components with stable IDs and slugs.
+
+2) If there is more than one component, set `component_mode` in `review.bundle.json` to `"per_component"` and create
+   per-component artifact folders:
+   - `.cbd/reviews/<review_id>-<slug>/components/<component_slug>/`
+   - copy templates from `.cbd/reviews/TEMPLATE/component/` into each component folder.
+
+3) Expand the review bundle so component-scoped work is independently executable (one component per session):
+   Clone these base work items per component (and point `outputs` at the component folder):
+   - WI-001 (contract map) → `components/<component>/contract-map.md`
+   - WI-002 (invariants) → `components/<component>/invariants.md`
+   - WI-005 (abuse cases) → `components/<component>/abuse-cases.md`
+   - WI-011 (STRIDE) → `components/<component>/threats.stride.md`
+   - WI-012 (LINDDUN, if applicable) → `components/<component>/privacy.linddun.md`
+   - WI-013 (ASVS, if applicable) → `components/<component>/controls.asvs.md`
+
+   Suggested ids: `WI-<component_slug>-001`, `WI-<component_slug>-002`, ...
+
+4) Keep global work items for cross-cutting concerns (assets, DFD, identity/authz, secrets/keys, reliability, observability/audit, supply chain, findings backlog).
+
+5) Findings MUST include a `component` field (component slug) so mitigation tasks can be generated per component.
+
+This keeps the review complete and allows parallelization across components while preserving traceability.
+
 
 ## How to pick the next bundle item
 1) Open `review.bundle.json`.
@@ -84,7 +117,9 @@ For the chosen bundle item (either a PLAN step or a REVIEW work item):
 - Ensure the review folder exists and contains the expected files:
   - `review.seed.md`
   - `review.bundle.json`
+  - `components.md` (system decomposition; required for multi-component reviews)
   - the artifact templates (contract-map.md, invariants.md, etc.)
+  - optional per-component templates under `components/<component_slug>/` when `component_mode=per_component`
 - PLAN steps are allowed to produce/edit **only** the review seed/bundle and review templates (no code changes).
 
 ### If it is a REVIEW work item (`phases.review[]`)

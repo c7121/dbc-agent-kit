@@ -19,10 +19,20 @@
         {
           "task_slug": "add-idempotency-key",
           "title": "Add idempotency keys at boundary X",
-          "notes": "Promote this into .cbd/tasks/* and run CONTRACT mode."
+          "notes": "Promote this into .cbd/tasks/* and run CONTRACT mode.",
+          "component": "global"
         }
       ],
-      "status": "open"
+      "status": "open",
+      "component": "global",
+      "source_refs": [
+        "STRIDE-001",
+        "DFD:FLOW-001"
+      ],
+      "evidence": {
+        "files": [],
+        "notes": ""
+      }
     }
   ]
 }

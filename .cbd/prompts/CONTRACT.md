@@ -52,6 +52,12 @@ Inputs you should read first (prefer tools/repo facts over guessing):
 - Each question MUST include:
   - **Blocked fields** (exact JSON paths you cannot finalize)
   - **Decision impacted** (what behavior changes based on the answer)
+- Each `open_questions[]` item MUST be classified by prefixing it with a tag:
+  - `[REQ]` missing requirement / product decision
+  - `[ADR]` architecturally significant fork (requires a MADR file under `docs/decisions/`)
+  - `[IMPL]` implementation detail (should usually be moved to `assumptions` or bundle work item notes, not block readiness)
+  - `[SEC]` security/privacy decision (may overlap with `[REQ]` or `[ADR]`)
+
 - Prefer verifying repo facts over guessing (search files, find existing patterns).
 - Do **not** implement code or generate patches in this mode.
 - Contract may be set to status `"ready"` only if `open_questions` is empty.
@@ -73,9 +79,19 @@ Use this loop to keep contract work deliberate and non-vibes.
      - Are error semantics explicit enough?
      - Do acceptance tests cover the intent?
      - Does every clause id appear in at least one `phases.build[].proves` list?
+     - **Task slicing check:** are any build work items too large, spanning multiple boundaries/integrations, or proving a huge grab-bag of clause ids?
+       - If yes, split into multiple small work items (by component/integration, by contract section, or by acceptance test group).
+       - Prefer work items that are independently implementable, testable, and reviewable.
+     - **Open question hygiene:** classify each `open_questions[]` item as `[REQ]`, `[ADR]`, `[IMPL]` (and optionally `[SEC]`).
+       - If it is `[IMPL]`, it should usually not block the contract; move it into `assumptions` or bundle notes.
+       - If it is `[ADR]`, ensure a MADR file exists and the question references it.
+     - **System/epic context check:** if this task clearly depends on system-level context (multiple components/services, many external integrations),
+       ensure there is a stable high-level context recorded once per epic (e.g., C4 Context/Container). If missing, add a `owner:"docs"` work item
+       in the bundle (or mark the contract blocked with an `[ADR]` open question) so it gets created before downstream tasks proliferate.
 
 4) **Revise**
    - Apply the critique: tighten clauses, add missing errors/tests, fix ids, fix coverage.
+   - Split/adjust bundle work items so they are small and assignable, and ensure any required epic/system docs work item is present.
 
 5) **Clarify (question rounds)**
    - If you still have blockers, add them to `open_questions` and ask **only 2–3 blocking questions per round**, then STOP.

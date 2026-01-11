@@ -36,3 +36,10 @@ The goal is to produce durable artifacts that:
 - perform threat modeling (STRIDE + LINDDUN when relevant)
 - record control coverage (ASVS) when relevant
 - generate a findings backlog that can be promoted into `.cbd/tasks/*`
+
+## Multi-component reviews
+If the system has multiple components/containers:
+- Fill `components.md` during PLAN and set `component_mode` in `review.bundle.json`.
+- Prefer `component_mode=per_component` so each component can be reviewed independently.
+- Create `.cbd/reviews/<review_id>-<slug>/components/<component_slug>/` folders and copy templates from `.cbd/reviews/TEMPLATE/component/`.
+- Expand the bundle with per-component work items (contract map, invariants, abuse cases, STRIDE, LINDDUN, ASVS) so agents can focus on one component per session.

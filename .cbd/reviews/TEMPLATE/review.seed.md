@@ -41,12 +41,30 @@ Rationale / notes:
 ## Known risks / incidents / history (if any)
 - …
 
+## System decomposition (components/containers)
+If the system has multiple components/containers, list them here and also fill `components.md`.
+
+- Component list (id + slug + short purpose):
+  - C-001 (`api`): …
+  - C-002 (`worker`): …
+  - C-003 (`web`): …
+
+Review granularity:
+- component_mode: single | per_component
+
+If `per_component`:
+- create `.cbd/reviews/<review_id>-<slug>/components/<component_slug>/` folders
+- copy templates from `.cbd/reviews/TEMPLATE/component/`
+- expand the review bundle with per-component work items
+
+
 ## Architectural forks / ADRs
 List ADRs relevant to this review.
 - ADR-0001: docs/decisions/0001-...
 
 ## Review outputs
 Artifacts in this folder:
+- components.md (system decomposition; required for multi-component reviews)
 - contract-map.md
 - invariants.md
 - assets.md
