@@ -1,0 +1,21 @@
+{
+  "epic_id": "<EPIC_ID>",
+  "slug": "<slug>",
+  "title": "<TITLE>",
+  "status": "draft",
+  "tasks": [
+    {
+      "task_id": "0001",
+      "slug": "example-task",
+      "title": "Example task title",
+      "goal": "One sentence outcome",
+      "depends_on": ["ADR-0001"],
+      "acceptance_scenarios": [
+        "Scenario: ... Given ... When ... Then ...",
+        "Scenario: ..."
+      ],
+      "notes": "",
+      "status": "candidate"
+    }
+  ]
+}
