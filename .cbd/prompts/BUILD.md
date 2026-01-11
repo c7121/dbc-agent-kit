@@ -37,6 +37,103 @@ Treat the bundle as the runbook:
 - No unrelated diffs. No “drive-by refactors.”
 - No new dependencies, migrations, or secret reads unless explicitly approved in `AGENTS.md`.
 
+## DbC enforcement idioms (Rust authoritative)
+
+BUILD must **implement and prove** each contract clause according to its `enforcement` level.
+Evidence must map each `clause_id` to the **actual enforcement mechanism** (not only tests) when applicable.
+
+### Enforcement → implementation expectations
+
+#### `enforcement: "static"`
+
+Use Rust’s type system to make invalid states unrepresentable:
+
+* Use **newtypes** (validated constructors) to encode invariants on IDs, addresses, amounts, etc.
+* Use enums/typestate patterns to encode valid state transitions.
+* Prefer this for invariants that should never be violated.
+
+Evidence:
+
+* Include a proof entry with `kind: "static"` pointing to the type definition/constructor.
+* Add tests if needed for constructor validation, but do not rely on tests alone when the invariant can live in types.
+
+References:
+
+* Rust API Guidelines (type safety, newtypes): [https://rust-lang.github.io/api-guidelines/type-safety.html](https://rust-lang.github.io/api-guidelines/type-safety.html)
+* Rust Book (newtype pattern): [https://doc.rust-lang.org/book/ch20-03-advanced-types.html](https://doc.rust-lang.org/book/ch20-03-advanced-types.html)
+* Rust by Example (newtype idiom): [https://doc.rust-lang.org/rust-by-example/generics/new_types.html](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
+
+#### `enforcement: "runtime"`
+
+Validate at **trust boundaries** and return typed errors (do not panic on expected bad input):
+
+* At API/CLI/adapter boundaries, validate untrusted inputs and return `Result<_, E>` with an explicit error.
+* Use runtime checks when the property cannot be encoded statically and must be enforced in production.
+
+Evidence:
+
+* Include a proof entry with `kind: "runtime"` pointing to the boundary validator / handler code.
+* Add tests proving the error codes/behaviors match the contract’s `errors[]`.
+
+References:
+
+* Rust Book (panic vs Result guidance): [https://doc.rust-lang.org/book/ch09-03-to-panic-or-not-to-panic.html](https://doc.rust-lang.org/book/ch09-03-to-panic-or-not-to-panic.html)
+* Rust Book (panic chapter): [https://doc.rust-lang.org/book/ch09-01-unrecoverable-errors-with-panic.html](https://doc.rust-lang.org/book/ch09-01-unrecoverable-errors-with-panic.html)
+* Rust Book (Result chapter): [https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html](https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html)
+* Rust API Guidelines (document Errors/Panics/Safety): [https://rust-lang.github.io/api-guidelines/documentation.html](https://rust-lang.github.io/api-guidelines/documentation.html)
+
+#### `enforcement: "debug"`
+
+Use `debug_assert!` for internal invariants that are helpful during development but too expensive/noisy for release:
+
+* Use `debug_assert!` for “this should never happen internally” checks.
+* Keep predicates side-effect free.
+
+Evidence:
+
+* Include a proof entry with `kind: "debug"` pointing to the `debug_assert!` location.
+* Add tests when feasible; debug assertions are not a substitute for correctness proofs.
+
+References:
+
+* `debug_assert!` docs: [https://doc.rust-lang.org/std/macro.debug_assert.html](https://doc.rust-lang.org/std/macro.debug_assert.html)
+
+#### `enforcement: "test"`
+
+Prove properties primarily through tests:
+
+* Use unit/integration/property tests for expensive validations, cross-system equivalence, or behavioral guarantees.
+* Prefer tests for postconditions unless runtime enforcement is required.
+
+Evidence:
+
+* Include a proof entry with `kind: "test"` pointing to the test name/file.
+* Ensure tests reference the contract behavior (acceptance tests should reference `clause_id`s via `proves`).
+
+References:
+
+* (General principle) Code Contracts overview (runtime checking + static verification + docs): [https://www.microsoft.com/en-us/research/project/code-contracts/](https://www.microsoft.com/en-us/research/project/code-contracts/)
+
+### `assert!` vs `debug_assert!`
+
+* Use `assert!` when the invariant must be enforced in release builds.
+* Use `debug_assert!` when the check is intended for debug builds only.
+
+References:
+
+* `assert!` docs: [https://doc.rust-lang.org/std/macro.assert.html](https://doc.rust-lang.org/std/macro.assert.html)
+* `debug_assert!` docs: [https://doc.rust-lang.org/std/macro.debug_assert.html](https://doc.rust-lang.org/std/macro.debug_assert.html)
+
+### Rust vs TypeScript
+
+Rust is authoritative for runtime safety/security enforcement. TypeScript validation is UX-only and cannot be the sole enforcement of `enforcement: "runtime"` clauses.
+
+(Background DbC monitoring levels, if useful):
+
+* Meyer “Design by Contract” (assertion monitoring levels): [https://se.inf.ethz.ch/~meyer/publications/old/dbc_chapter.pdf](https://se.inf.ethz.ch/~meyer/publications/old/dbc_chapter.pdf)
+* Eiffel assertions overview: [https://www.eiffel.org/doc/eiffel/ET-_Design_by_Contract_%28tm%29%2C_Assertions_and_Exceptions](https://www.eiffel.org/doc/eiffel/ET-_Design_by_Contract_%28tm%29%2C_Assertions_and_Exceptions)
+
+
 ## Export archive + final report format (canonical)
 Archive location and naming:
 - Directory: `.cbd/exports/`

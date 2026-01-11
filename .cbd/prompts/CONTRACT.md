@@ -62,7 +62,9 @@ If a statement cannot be checked (by types, compile-time checks, tests, debug as
 it should **not** be written as a clause. Instead, rewrite/split it into checkable predicates, or put it in
 `assumptions` / `open_questions` (see decision flow).
 
-Principle: prefer **STATIC > TEST > DEBUG > RUNTIME** for enforcement.
+Principle:
+- prefer **STATIC > TEST > DEBUG > RUNTIME** for enforcement.
+- prefer multiple checks (e.g. Test plus Runtime).
 
 ### What each enforcement level is for (property → enforcement mapping)
 Use this table when choosing `enforcement` for a clause:
@@ -91,6 +93,8 @@ Use this table when choosing `enforcement` for a clause:
 Notes:
 - Rust enforcement is authoritative; TypeScript is UX-only and cannot be the sole enforcement of `runtime` clauses.
 - Avoid side effects in contract checks: predicates must be pure.
+
+IMPORTANT: When choosing a clause’s enforcement, ensure it matches the implementation expectations in .cbd/prompts/BUILD.md (“DbC enforcement idioms”), so BUILD can embed the contract correctly in Rust.
 
 ## How to write the bundle
 The bundle is the **handoff runbook** from PLAN → CREATE: it tells the BUILD agent what to do without inventing a plan.
