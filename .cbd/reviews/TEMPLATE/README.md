@@ -2,6 +2,14 @@
 
 Copy this folder to start a new review run:
 
+Recommended: scaffold a run using `xtask`:
+
+```bash
+cargo run --manifest-path xtask/Cargo.toml -- cbd new-review --id R-0001 --slug login-redesign
+```
+
+Manual:
+
 1) Create folder: `.cbd/reviews/<review_id>-<slug>/`
 
 2) Copy files from TEMPLATE into it:

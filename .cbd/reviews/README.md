@@ -7,17 +7,24 @@ This folder contains review templates and review runs. Reviews are designed to b
 
 1) Pick a review id + slug, e.g. `R-0001` + `login-redesign`.
 
-2) Create the review folder and copy the template files:
+2) Recommended: scaffold the review run using `xtask`:
+```bash
+cargo run --manifest-path xtask/Cargo.toml -- cbd new-review --id R-0001 --slug login-redesign
+```
+
+If you prefer manual scaffolding, use the template folder directly:
+
+3) Create the review folder and copy the template files:
 ```bash
 mkdir -p .cbd/reviews/R-0001-login-redesign
 cp -R .cbd/reviews/TEMPLATE/* .cbd/reviews/R-0001-login-redesign/
 ```
 
-3) Edit:
+4) Edit:
 - `.cbd/reviews/R-0001-login-redesign/review.seed.md` (scope, assets, links)
 - `.cbd/reviews/R-0001-login-redesign/review.bundle.json` (replace `<REVIEW_ID>`, `<slug>`, `<TITLE>`)
 
-4) Run the REVIEW agent and complete bundle items one at a time:
+5) Run the REVIEW agent and complete bundle items one at a time:
 - first complete the PLAN steps (`phases.plan[]`)
 - then complete REVIEW work items (`phases.review[]`)
 

@@ -32,6 +32,9 @@ enum CbdCommand {
     /// Scaffold a new Epic requirements seed (PRD-level) under .cbd/requirements/
     NewEpic(NewEpicArgs),
 
+    /// Scaffold a new Review run under .cbd/reviews/
+    NewReview(NewReviewArgs),
+
     /// Fail fast if a contract is not ready
     ValidateReady(ValidateReadyArgs),
     /// Hard gate: ready + evidence coverage + checks
@@ -83,6 +86,32 @@ struct NewEpicArgs {
     interactive: bool,
 }
 
+/// Arguments for the `cbd new-review` subcommand.
+#[derive(Args, Debug)]
+struct NewReviewArgs {
+    /// Review id, e.g. R-0001
+    #[arg(long)]
+    id: String,
+
+    /// Slug, e.g. login-redesign
+    #[arg(long)]
+    slug: String,
+
+    /// Optional human-friendly title. Defaults to title-cased slug.
+    #[arg(long)]
+    title: Option<String>,
+
+    /// Overwrite existing files if present
+    #[arg(long, default_value_t = false)]
+    force: bool,
+
+    /// Ask a few prompts and write a pre-filled review seed file.
+    ///
+    /// This is meant for humans. Agents in REVIEW mode will proceed work-item-by-work-item.
+    #[arg(long, default_value_t = false)]
+    interactive: bool,
+}
+
 /// Arguments for the `cbd validate-ready` subcommand.
 #[derive(Args, Debug)]
 struct ValidateReadyArgs {
@@ -122,6 +151,7 @@ fn run() -> Result<i32> {
         Cli::Cbd(cmd) => match cmd {
             CbdCommand::NewTask(args) => cbd_new_task(&args),
             CbdCommand::NewEpic(args) => cbd_new_epic(&args),
+            CbdCommand::NewReview(args) => cbd_new_review(&args),
             CbdCommand::ValidateReady(args) => cbd_validate_ready(&args.id),
             CbdCommand::Verify(args) => cbd_verify(&args.id),
         },
@@ -175,6 +205,20 @@ fn write_text(path: &Path, text: &str, force: bool) -> Result<()> {
             .with_context(|| format!("Failed to create directory {}", parent.display()))?;
     }
     fs::write(path, text).with_context(|| format!("Failed to write {}", path.display()))
+}
+
+fn write_bytes(path: &Path, bytes: &[u8], force: bool) -> Result<()> {
+    if path.exists() && !force {
+        return Err(anyhow!(
+            "Refusing to overwrite existing file (use --force): {}",
+            path.display()
+        ));
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create directory {}", parent.display()))?;
+    }
+    fs::write(path, bytes).with_context(|| format!("Failed to write {}", path.display()))
 }
 
 fn write_json(path: &Path, value: &Value, force: bool) -> Result<()> {
@@ -273,6 +317,64 @@ fn body_or(text: &str, fallback: &str) -> String {
     } else {
         normalize_block(text)
     }
+}
+
+fn apply_replacements(mut s: String, replacements: &[(String, String)]) -> String {
+    for (k, v) in replacements {
+        s = s.replace(k, v);
+    }
+    s
+}
+
+fn copy_dir_with_replacements(
+    src_dir: &Path,
+    dst_dir: &Path,
+    replacements: &[(String, String)],
+    force: bool,
+) -> Result<()> {
+    if !src_dir.is_dir() {
+        return Err(anyhow!(
+            "Template directory not found: {}",
+            src_dir.display()
+        ));
+    }
+    fs::create_dir_all(dst_dir)
+        .with_context(|| format!("Failed to create directory {}", dst_dir.display()))?;
+
+    for entry in fs::read_dir(src_dir)
+        .with_context(|| format!("Failed to read directory {}", src_dir.display()))?
+    {
+        let entry = entry.with_context(|| format!("Failed to read entry in {}", src_dir.display()))?;
+        let file_type = entry
+            .file_type()
+            .with_context(|| format!("Failed to stat {}", entry.path().display()))?;
+
+        let src_path = entry.path();
+        let dst_path = dst_dir.join(entry.file_name());
+
+        if file_type.is_dir() {
+            copy_dir_with_replacements(&src_path, &dst_path, replacements, force)?;
+            continue;
+        }
+
+        if file_type.is_file() {
+            let bytes = fs::read(&src_path)
+                .with_context(|| format!("Failed to read {}", src_path.display()))?;
+
+            // Most templates are UTF-8 markdown/json. If not, copy bytes unchanged.
+            match std::str::from_utf8(&bytes) {
+                Ok(text) => {
+                    let replaced = apply_replacements(text.to_string(), replacements);
+                    write_text(&dst_path, &replaced, force)?;
+                }
+                Err(_) => {
+                    write_bytes(&dst_path, &bytes, force)?;
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -524,6 +626,100 @@ Only if needed. Link MADR files under `docs/decisions/`.
     )
 }
 
+#[allow(clippy::too_many_arguments)]
+fn render_review_seed_markdown(
+    review_id: &str,
+    title: &str,
+    kind: &str,
+    date: &str,
+    prd_path: &str,
+    repo_ref: &str,
+    owner_stakeholders: &str,
+    in_scope: &str,
+    out_of_scope: &str,
+    assumptions: &str,
+    primary_assets: &str,
+    external_systems: &str,
+    security_privacy: &str,
+    known_risks: &str,
+) -> String {
+    let title = body_or(title, "Untitled");
+    let kind = body_or(kind, "PRD");
+    let date = body_or(date, "YYYY-MM-DD");
+    let prd_path = body_or(prd_path, "- (not provided yet)");
+    let repo_ref = body_or(repo_ref, "- (not provided yet)");
+    let owner_stakeholders = body_or(owner_stakeholders, "- (not provided yet)");
+
+    let in_scope = bullet_lines(in_scope, "- TBD");
+    let out_of_scope = bullet_lines(out_of_scope, "- TBD");
+    let assumptions = bullet_lines(assumptions, "- TBD");
+    let primary_assets = bullet_lines(primary_assets, "- TBD");
+    let external_systems = bullet_lines(external_systems, "- TBD");
+    let security_privacy = bullet_lines(security_privacy, "- TBD");
+    let known_risks = bullet_lines(known_risks, "- (none specified yet)");
+
+    format!(
+        "\
+# Review {review_id} — {title}
+Kind: {kind}
+Date: {date}
+Status: draft
+
+## What is being reviewed?
+- PRD link / doc path:
+{prd_path}
+- Repo / commit / PR link (if implementation):
+{repo_ref}
+- Owner / stakeholders:
+{owner_stakeholders}
+
+## Scope
+### In scope
+{in_scope}
+
+### Out of scope
+{out_of_scope}
+
+## Assumptions
+{assumptions}
+
+## Primary assets (initial)
+List what matters most (money, keys, PII, positions, audit logs, etc.).
+{primary_assets}
+
+## External systems / integrations
+{external_systems}
+
+## Security / privacy constraints (explicit)
+{security_privacy}
+
+## Known risks / incidents / history (if any)
+{known_risks}
+
+## Architectural forks / ADRs
+List ADRs relevant to this review.
+- (none yet)
+
+## Review outputs
+Artifacts expected in this folder (see review.bundle.json):
+- contract-map.md
+- invariants.md
+- assets.md
+- dfd.md
+- abuse-cases.md
+- identity-authz.md
+- secrets-keys.md
+- reliability-failure.md
+- observability-audit.md
+- supply-chain.md
+- threats.stride.md
+- privacy.linddun.md (optional)
+- controls.asvs.md (optional)
+- findings.tasklist.json
+"
+    )
+}
+
 fn cbd_new_epic(args: &NewEpicArgs) -> Result<i32> {
     let cbd = cbd_root()?;
 
@@ -668,6 +864,98 @@ fn cbd_new_epic(args: &NewEpicArgs) -> Result<i32> {
             .strip_prefix(&root)
             .unwrap_or(&tasklist_path)
             .display()
+    );
+
+    Ok(0)
+}
+
+fn cbd_new_review(args: &NewReviewArgs) -> Result<i32> {
+    let cbd = cbd_root()?;
+
+    let reviews_dir = cbd.join("reviews");
+    let template_dir = reviews_dir.join("TEMPLATE");
+    let out_dir = reviews_dir.join(format!("{}-{}", args.id, args.slug));
+
+    if out_dir.exists() && !args.force {
+        return Err(anyhow!(
+            "Refusing to overwrite existing review directory (use --force): {}",
+            out_dir.display()
+        ));
+    }
+
+    let default_title = title_from_slug(&args.slug);
+    let title = args.title.clone().unwrap_or(default_title);
+
+    // Copy template files into the review run folder.
+    // Replace placeholders in text files: <REVIEW_ID>, <slug>, <TITLE>
+    let replacements = vec![
+        ("<REVIEW_ID>".to_string(), args.id.clone()),
+        ("<slug>".to_string(), args.slug.clone()),
+        ("<TITLE>".to_string(), title.clone()),
+    ];
+
+    copy_dir_with_replacements(&template_dir, &out_dir, &replacements, args.force).with_context(
+        || {
+            format!(
+                "Failed to copy review template from {} to {}",
+                template_dir.display(),
+                out_dir.display()
+            )
+        },
+    )?;
+
+    // Optional: write a pre-filled review seed for humans.
+    if args.interactive {
+        println!("Creating review {}-{} interactively.", args.id, args.slug);
+        println!("Press Enter to accept defaults or skip optional fields.\n");
+
+        let kind = prompt_line("Kind (PRD|Implementation|Both)", Some("PRD"))?;
+        let date = prompt_line("Date (YYYY-MM-DD)", Some("YYYY-MM-DD"))?;
+        let prd_path = prompt_block("PRD link / doc path (optional)")?;
+        let repo_ref = prompt_block("Repo / commit / PR link (optional)")?;
+        let owner_stakeholders = prompt_block("Owner / stakeholders (optional)")?;
+        let in_scope = prompt_block("In scope (one per line)")?;
+        let out_of_scope = prompt_block("Out of scope (one per line)")?;
+        let assumptions = prompt_block("Assumptions (one per line) [optional]")?;
+        let primary_assets = prompt_block(
+            "Primary assets (money, keys, PII, positions, audit logs, etc.) (one per line)",
+        )?;
+        let external_systems = prompt_block("External systems / integrations (one per line)")?;
+        let security_privacy = prompt_block("Security / privacy constraints (one per line)")?;
+        let known_risks = prompt_block("Known risks / incidents / history (one per line) [optional]")?;
+
+        let seed_text = render_review_seed_markdown(
+            &args.id,
+            &title,
+            &kind,
+            &date,
+            &prd_path,
+            &repo_ref,
+            &owner_stakeholders,
+            &in_scope,
+            &out_of_scope,
+            &assumptions,
+            &primary_assets,
+            &external_systems,
+            &security_privacy,
+            &known_risks,
+        );
+
+        let seed_path = out_dir.join("review.seed.md");
+        write_text(&seed_path, &seed_text, true)?;
+    }
+
+    let root = repo_root()?;
+    println!("Created review run:");
+    println!(
+        "  {}",
+        out_dir.strip_prefix(&root).unwrap_or(&out_dir).display()
+    );
+    println!("Next:");
+    println!(
+        "  Edit {}/review.seed.md and {}/review.bundle.json",
+        out_dir.strip_prefix(&root).unwrap_or(&out_dir).display(),
+        out_dir.strip_prefix(&root).unwrap_or(&out_dir).display()
     );
 
     Ok(0)

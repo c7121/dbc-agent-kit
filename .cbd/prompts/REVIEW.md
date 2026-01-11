@@ -45,7 +45,14 @@ If they do not exist yet, scaffold a new review run from the template:
 
 1) Choose a review id and slug, e.g. `R-0001` and `login-redesign`.
 
-2) Create the review folder and copy the templates:
+2) Recommended: scaffold the review run using `xtask`:
+```bash
+cargo run --manifest-path xtask/Cargo.toml -- cbd new-review --id R-0001 --slug login-redesign
+```
+
+If you prefer manual scaffolding:
+
+2b) Create the review folder and copy the templates:
 ```bash
 mkdir -p .cbd/reviews/R-0001-login-redesign
 cp -R .cbd/reviews/TEMPLATE/* .cbd/reviews/R-0001-login-redesign/
