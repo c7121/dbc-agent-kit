@@ -553,8 +553,8 @@ fn cbd_verify(id: &str) -> Result<i32> {
     };
 
     let (status, open_q_len) = contract_ready_details(&contract);
-    if status != "ready" || open_q_len > 0 {
-        println!("Contract {id} not ready:");
+    if !(status == "ready" || status == "implemented") || open_q_len > 0 {
+        println!("Contract {id} not ready/implemented:");
         println!("  status={status:?}");
         println!(
             "  open_questions={}",

@@ -149,8 +149,23 @@ mkdir -p .cbd/exports
 TS="$(date +%Y%m%d-%H%M%S)"
 ARCHIVE=".cbd/exports/<id>-$TS.zip"
 
-# Do not leave any uncommitted files before running.
-git archive --format=zip --output="$ARCHIVE" HEAD
+# Preferred: if the working tree is clean, export the exact HEAD snapshot (tracked files only).
+if [ -z "$(git status --porcelain)" ]; then
+  git archive --format=zip --output="$ARCHIVE" HEAD
+else
+  # Fallback: include uncommitted changes for review.
+  # Be careful to exclude secrets and build artifacts.
+  zip -r "$ARCHIVE" . \
+    -x ".git/*" \
+    -x "target/*" \
+    -x "node_modules/*" \
+    -x ".cbd/exports/*" \
+    -x ".env" -x ".env.*" -x ".envrc" \
+    -x "*.pem" -x "*.key" -x "*.p12" \
+    -x "secrets/*"
+fi
+
+echo "Archive: $ARCHIVE"
 ```
 
 ## Handoff when blocked (important: don’t interrogate the human here)
@@ -163,7 +178,7 @@ In BUILD mode, if you discover missing decisions, contradictions, or unimplement
    - any repo evidence (file paths, snippets, failing test output) that explains why it’s blocked
 
 2) Update the contract to reflect reality:
-   - set `status` back to `"draft"` (or `"blocked"` if you use that)
+   - set `status` back to `"draft"` (this ensures the ready gate fails)
    - append the handoff questions into `open_questions`
 
 3) Create a **timestamped handoff archive** at `$ARCHIVE` (use the canonical naming above) containing only the relevant files:
@@ -228,20 +243,12 @@ Even if you are not actually committing, you must propose a commit message:
 
 ## Success handoff (required when verify passes)
 At the end of a successful BUILD session (after `xtask cbd verify` passes), you MUST:
-1) Create a timestamped export archive (full repo export) using the canonical commands above.
-2) Output a final BUILD report including:
+1) Update artifacts to reflect completion:
+   - `.cbd/contracts/<id>.contract.json`: set `status: "implemented"` (keep `open_questions` empty)
+   - `.cbd/bundles/<id>.bundle.json`: set `status: "done"` and mark `phases.build` work items `done` (or `skipped`)
+2) Create a timestamped export archive using the canonical commands above.
+3) Output the final BUILD report using the format in “Export archive + final report format (canonical)”, including:
    - Archive path
    - `xtask cbd verify` command + output summary
    - Clause coverage summary (X/Y)
    - Suggested Conventional Commit message
-
-## Output requirements
-At the end of BUILD work, you must output:
-1) Create the export archive using “Export archive + final report format (canonical)”
-2) Output a final report (same section) including:
-   - What changed (files + intent, brief)
-   - Evidence pack status (what clauses are proven where; X/Y)
-   - Test/lint/verify outputs (or point to the evidence report)
-   - Archive path
-   - Suggested Conventional Commit message
-3) If blocked: point to `.cbd/reports/<id>.handoff.md` and stop

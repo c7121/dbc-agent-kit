@@ -22,7 +22,7 @@ CI/verification must use:
 - `cargo run --manifest-path xtask/Cargo.toml -- cbd verify --id <id>`
 
 `xtask cbd verify` fails if:
-- contract is not `ready` or has `open_questions`
+- contract status is neither `ready` nor `implemented`, or it has `open_questions`
 - any contract clause id lacks proof in `.cbd/reports/<id>.evidence.json`
 - Rust checks fail (`cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`)
 - TS checks fail (only if a frontend `package.json` exists, and only for scripts that exist: `lint`, `test`, `build`)
