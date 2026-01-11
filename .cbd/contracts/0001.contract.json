@@ -1,0 +1,183 @@
+{
+  "id": "0001",
+  "title": "Align xtask interactive scaffolding to .cbd templates",
+  "status": "ready",
+  "scope": {
+    "in": [
+      "Interactive scaffolding for `cbd new-task`, `cbd new-epic`, and `cbd new-review` renders from the corresponding .cbd templates.",
+      "Prompted inputs replace the matching template section bodies while preserving headings.",
+      "Tests prove template-driven rendering and placeholder replacement."
+    ],
+    "out": [
+      "Change non-interactive scaffolding behavior.",
+      "Modify .cbd template contents or schemas.",
+      "Add new CLI flags or subcommands."
+    ]
+  },
+  "interfaces": {
+    "commands": [
+      {
+        "name": "cbd new-task --interactive",
+        "input_schema": "CLI args: --id <id> --slug <slug> [--force] --interactive",
+        "output_schema": "Writes .cbd/tasks/<id>-<slug>.md derived from .cbd/tasks/TEMPLATE.md",
+        "preconditions": [
+          {
+            "id": "NT-PRE-001",
+            "statement": "The template file .cbd/tasks/TEMPLATE.md exists and is readable.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system"
+          }
+        ],
+        "postconditions": [
+          {
+            "id": "NT-POST-001",
+            "statement": "The generated task file is rendered from .cbd/tasks/TEMPLATE.md and preserves all template headings in the same order.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          },
+          {
+            "id": "NT-POST-002",
+            "statement": "Template placeholders (<ID>, <short title>) are replaced with the provided task id and short title values.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          },
+          {
+            "id": "NT-POST-003",
+            "statement": "Non-empty prompt responses replace the body content of their corresponding sections (Goal, User story, In scope, Out of scope, Acceptance scenarios (examples-first), Context, Constraints, Dependencies, Unknowns); unprompted sections (Observability (optional)) retain the template defaults unchanged.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "name": "cbd new-epic --interactive",
+        "input_schema": "CLI args: --id <epic_id> --slug <slug> [--force] --interactive",
+        "output_schema": "Writes .cbd/requirements/<epic_id>-<slug>.md derived from .cbd/requirements/TEMPLATE.epic.md",
+        "preconditions": [
+          {
+            "id": "NE-PRE-001",
+            "statement": "The template file .cbd/requirements/TEMPLATE.epic.md exists and is readable.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system"
+          }
+        ],
+        "postconditions": [
+          {
+            "id": "NE-POST-001",
+            "statement": "The generated epic file is rendered from .cbd/requirements/TEMPLATE.epic.md and preserves all template headings in the same order.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          },
+          {
+            "id": "NE-POST-002",
+            "statement": "Template placeholders (<EPIC_ID>, <TITLE>, <slug>, <epic_id>) are replaced with the provided epic id, title, and slug values.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          },
+          {
+            "id": "NE-POST-003",
+            "statement": "Non-empty prompt responses replace the body content of their corresponding sections (Problem, Target users / stakeholders, Goals (outcomes), Success metrics, In scope, Out of scope / Non-goals, Constraints, Integrations / dependencies, User stories, Acceptance scenarios (examples-first), Open questions); unprompted sections (Architectural forks (ADRs), C4 notes (optional), Task backlog) retain the template defaults unchanged.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "name": "cbd new-review --interactive",
+        "input_schema": "CLI args: --id <review_id> --slug <slug> [--title <title>] [--force] --interactive",
+        "output_schema": "Writes .cbd/reviews/<review_id>-<slug>/review.seed.md derived from .cbd/reviews/TEMPLATE/review.seed.md",
+        "preconditions": [
+          {
+            "id": "NR-PRE-001",
+            "statement": "The template file .cbd/reviews/TEMPLATE/review.seed.md exists and is readable.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system"
+          }
+        ],
+        "postconditions": [
+          {
+            "id": "NR-POST-001",
+            "statement": "The generated review seed is rendered from .cbd/reviews/TEMPLATE/review.seed.md and preserves all template headings in the same order.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          },
+          {
+            "id": "NR-POST-002",
+            "statement": "Template placeholders (<REVIEW_ID>, <TITLE>) are replaced with the provided review id and title values.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          },
+          {
+            "id": "NR-POST-003",
+            "statement": "Non-empty prompt responses replace the body content of their corresponding sections (What is being reviewed?, In scope, Out of scope, Assumptions, Primary assets (initial), External systems / integrations, Security / privacy constraints (explicit), Known risks / incidents / history (if any)); unprompted sections (Threat modeling frameworks, System decomposition (components/containers), Architectural forks / ADRs, Review outputs) retain the template defaults unchanged.",
+            "enforcement": "test",
+            "mechanism": "rust_test",
+            "obligation": "system"
+          }
+        ],
+        "errors": []
+      }
+    ]
+  },
+  "data_contracts": [],
+  "system_invariants": [],
+  "observability": {
+    "logs": [],
+    "metrics": [],
+    "traces": []
+  },
+  "acceptance_tests": [
+    {
+      "id": "AT-NT-001",
+      "description": "Running `cbd new-task --interactive` renders from the task template, preserves headings, replaces placeholders, and inserts prompted content.",
+      "proves": [
+        "NT-POST-001",
+        "NT-POST-002",
+        "NT-POST-003"
+      ]
+    },
+    {
+      "id": "AT-NE-001",
+      "description": "Running `cbd new-epic --interactive` renders from the epic template, preserves headings, replaces placeholders, and inserts prompted content.",
+      "proves": [
+        "NE-POST-001",
+        "NE-POST-002",
+        "NE-POST-003"
+      ]
+    },
+    {
+      "id": "AT-NR-001",
+      "description": "Running `cbd new-review --interactive` renders from the review seed template, preserves headings, replaces placeholders, and inserts prompted content.",
+      "proves": [
+        "NR-POST-001",
+        "NR-POST-002",
+        "NR-POST-003"
+      ]
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    "Template section headings are unique and stable for section replacement.",
+    "Unprompted sections retain the template defaults without modification.",
+    "Template read failures propagate as CLI errors (non-zero exit) without bespoke error codes."
+  ],
+  "definition_of_done": [
+    "open_questions is empty",
+    "acceptance_tests implemented and passing",
+    "each clause id in pre/post/invariants/errors has a proof entry in evidence.json",
+    "Rust enforcement is authoritative; TypeScript enforcement is UX-only"
+  ]
+}

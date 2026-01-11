@@ -1,0 +1,98 @@
+{
+  "id": "0001",
+  "title": "Align xtask interactive scaffolding to .cbd templates",
+  "slug": "xtask-template-sync",
+  "status": "draft",
+  "artifact_paths": {
+    "task": ".cbd/tasks/0001-xtask-template-sync.md",
+    "contract": ".cbd/contracts/0001.contract.json",
+    "evidence_json": ".cbd/reports/0001.evidence.json",
+    "evidence": ".cbd/reports/0001.evidence.md"
+  },
+  "phases": {
+    "plan": [
+      {
+        "step": "context",
+        "status": "done",
+        "notes": "Reviewed xtask/src/main.rs and .cbd templates; identified interactive drift."
+      },
+      {
+        "step": "draft_contract",
+        "status": "done",
+        "notes": "Drafted contract in .cbd/contracts/0001.contract.json and aligned bundle to task scope."
+      },
+      {
+        "step": "critique_contract",
+        "status": "done",
+        "notes": "- Align NT/NE/NR postcondition section names to template headings.\n- Trim placeholder lists to tokens present in templates (task: <ID>, <short title> only).\n- Confirm epic placeholders cover <EPIC_ID>, <TITLE>, <slug>, <epic_id>.\n- Decide on missing-template handling (rely on CLI error propagation)."
+      },
+      {
+        "step": "revise_contract",
+        "status": "done",
+        "notes": "Updated postcondition section lists to match template headings + unprompted sections, tightened task placeholder wording, and documented template I/O error propagation in assumptions."
+      },
+      {
+        "step": "clarify_rounds",
+        "status": "done",
+        "notes": "No open questions; no clarification rounds required."
+      },
+      {
+        "step": "set_ready",
+        "status": "done",
+        "notes": "Contract status is ready and bundle is build-ready."
+      }
+    ],
+    "build": [
+      {
+        "id": "WI-001",
+        "owner": "build",
+        "description": "Refactor interactive scaffolding in xtask to render from .cbd templates and replace section bodies based on prompts while preserving headings.",
+        "proves": [
+          "NT-PRE-001",
+          "NE-PRE-001",
+          "NR-PRE-001"
+        ],
+        "outputs": [
+          "xtask/src/main.rs"
+        ],
+        "status": "todo"
+      },
+      {
+        "id": "WI-002",
+        "owner": "test",
+        "description": "Add tests that confirm template-driven rendering, placeholder replacement, and section insertion for each interactive scaffold command.",
+        "proves": [
+          "NT-POST-001",
+          "NT-POST-002",
+          "NT-POST-003",
+          "NE-POST-001",
+          "NE-POST-002",
+          "NE-POST-003",
+          "NR-POST-001",
+          "NR-POST-002",
+          "NR-POST-003"
+        ],
+        "outputs": [
+          "xtask/tests/interactive_templates.rs"
+        ],
+        "status": "todo"
+      },
+      {
+        "id": "WI-003",
+        "owner": "verify",
+        "description": "Run `xtask cbd verify --id 0001` and update evidence.json with proof locations.",
+        "proves": [],
+        "outputs": [],
+        "status": "todo"
+      },
+      {
+        "id": "WI-004",
+        "owner": "review",
+        "description": "Optional: package a review archive and request a second-pass review.",
+        "proves": [],
+        "outputs": [],
+        "status": "todo"
+      }
+    ]
+  }
+}
