@@ -58,6 +58,7 @@ In either case, follow this protocol so handoffs are mechanical:
 - Do not declare done unless acceptance tests pass.
 - No unrelated diffs. No “drive-by refactors.”
 - No new dependencies, migrations, or secret reads unless explicitly approved in `AGENTS.md`.
+- If blocked by an unresolved architectural fork, request an ADR via CONTRACT mode and reference it in the handoff.
 
 ## DbC enforcement idioms (Rust authoritative)
 

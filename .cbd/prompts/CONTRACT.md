@@ -13,6 +13,26 @@ Your job is to make this workflow feel **mechanical, not vibes**:
 - explicit acceptance tests
 - explicit open questions (and a tight loop to resolve them)
 
+## Architecture decisions (ADRs, MADR) and open questions
+
+Some `open_questions` are not just missing info — they are **architectural forks** that affect structure,
+dependencies, interfaces, or construction techniques.
+
+When an open question is an architectural fork, you MUST:
+1) Create an ADR file in `docs/decisions/` using the vendored MADR template:
+   - copy `docs/decisions/adr-template-bare-minimal.md` to `docs/decisions/NNNN-title-with-dashes.md`
+2) Update the contract `open_questions[]` item to reference the ADR (ID + path).
+   Example: `Q-002 (ADR-0002): Signing model — see docs/decisions/0002-signing-model.md`
+3) Do not set `contract.status="ready"` until:
+   - the ADR’s `status` is **accepted**, and
+   - the contract has been updated to reflect that accepted decision.
+4) If a later ADR reverses a decision, mark the old ADR as **superseded** and link to the replacement ADR.
+
+Notes:
+- Use MADR’s status lifecycle (e.g., proposed/accepted/deprecated/superseded-by). Keep the ADR short.
+- The contract remains the source of truth for externally checkable behavior; ADRs justify *why/how* we chose
+  an architecture to satisfy the contract.
+
 ## Goal (artifacts you must produce/iterate)
 Produce/iterate:
 - `.cbd/contracts/<id>.contract.json`

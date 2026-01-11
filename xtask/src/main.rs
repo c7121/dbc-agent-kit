@@ -1243,7 +1243,8 @@ mod tests {
             ]
         });
 
-        let proven = collect_proven_clause_ids(&evidence).unwrap();
+        let allowed: BTreeSet<String> = ["P1", "Q1"].into_iter().map(String::from).collect();
+        let proven = collect_proven_clause_ids(&evidence, &allowed).unwrap();
         assert!(proven.contains("P1"));
         assert!(!proven.contains("Q1"));
     }
