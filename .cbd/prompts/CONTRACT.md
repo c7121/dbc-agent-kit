@@ -62,8 +62,26 @@ Inputs you should read first (prefer tools/repo facts over guessing):
 - Do **not** implement code or generate patches in this mode.
 - Contract may be set to status `"ready"` only if `open_questions` is empty.
 
-## CONTRACT mini loop (context → plan → critique → revise)
+## Session discipline (one plan step per session — hard rule)
+A “task” in CONTRACT mode is a single `phases.plan[]` step in the bundle (context, draft, critique, revise, clarify, set_ready).
+
+You MUST:
+- Complete **exactly one** plan step per session (advance only that step’s status and notes).
+- Commit it.
+- Then STOP and check in with the human before starting the next plan step.
+
+This rule exists to prevent “speedrunning” (draft+critique+revise in one pass). Critique and revision must be
+separate steps so revision can actually respond to the critique.
+
+If the human asks you to do multiple plan steps at once:
+- Do not proceed.
+- Propose the step sequence and ask which single plan step to do next.
+
+
+## CONTRACT mini loop (context → draft → critique → revise → clarify → ready)
 Use this loop to keep contract work deliberate and non-vibes.
+
+IMPORTANT: Do only ONE stage per session (see “Session discipline”).
 
 1) **Context**
    - Read `.cbd/tasks/<id>-*.md` and relevant code.
@@ -189,8 +207,17 @@ Important:
 - CONTRACT mode does **not** implement code; it only produces a build‑ready bundle and a checkable contract.
 
 ## Output requirements (what you must leave behind each round)
-At the end of each CONTRACT round, you must:
+At the end of each CONTRACT session (one plan step), you must:
 1) Update/produce the contract JSON and bundle JSON in the repo.
-2) Print a short summary of what changed (1–2 paragraphs) **inside triple backticks** (copy/paste friendly).
-3) If `open_questions` is non-empty ask at most **2–3 blocking questions** (or ask 0 if `open_questions` is empty and you can mark `status: "ready"`), also **inside the same triple-backticks block**.
-4) STOP.
+2) Commit the changes (unless the human explicitly tells you not to):
+   - use Conventional Commits (e.g., `docs(cbd): ...`, `feat(cbd): ...`)
+   - include the task id as a scope or in the subject when useful
+   - if you cannot commit, provide the exact `git commit` command(s) the human should run
+3) Print a short summary of what changed (1–2 paragraphs) **inside triple backticks** (copy/paste friendly), including:
+   - which plan step you completed
+   - the commit hash (if committed)
+4) If `open_questions` is non-empty: ask at most **2–3 blocking questions** (inside the same triple-backticks block), then STOP.
+   If `open_questions` is empty: ask exactly ONE check-in question:
+   - “Proceed to the next plan step?” (or “Hand off to another agent?”)
+5) STOP.
+

@@ -16,6 +16,20 @@ If either is false:
 - Do not implement.
 - Create a handoff report (see “Handoff when blocked”) and stop.
 
+## Session discipline (one work item per session — hard rule)
+A “task” in BUILD mode is a single `phases.build[]` work item (e.g., `WI-002`).
+
+You MUST:
+- Execute **exactly one** work item per session.
+- Commit it.
+- Then STOP and check in with the human before starting the next work item.
+
+If the human asks you to do multiple work items at once:
+- Do not proceed.
+- Propose an ordered sequence of work item ids.
+- Ask which **single** work item to do next.
+
+
 ## Mission
 Implement the smallest coherent diff that satisfies the contract.
 Prove every clause with tests and/or runtime assertions, and produce an evidence pack.
@@ -26,16 +40,19 @@ Treat the bundle as the runbook:
 - Update each work item status as you complete it (`todo` → `in_progress` → `done`, etc.).
 
 ## Executing work items (consistent starting point)
-You may be asked to execute the entire `phases.build` list, or only specific work item ids (e.g. "WI-002 only").
-In either case, follow this protocol so handoffs are mechanical:
+You should be asked to execute a specific work item id (e.g. “WI-002 only”).
+If you are asked to execute multiple work items, do **not** start: propose the sequence and ask which single work item to do first.
+
+Follow this protocol for the single assigned work item:
 
 1) Load the contract + bundle and confirm the precondition gate (`status: ready`, `open_questions: []`).
-2) For each assigned work item:
+2) For the assigned work item:
    - Set `status: in_progress`.
    - Execute the work (see owner semantics below).
    - Update `outputs` with the paths you changed/added (best effort).
    - Update `.cbd/reports/<id>.evidence.json` with proof locations for the clause ids in `proves`.
    - Mark `status: done` (or `blocked` with a short note in the bundle and a `.handoff.md`).
+   - Commit the changes (see “Commit + check-in protocol”).
 
 ### Owner semantics (what each work item owner is expected to do)
 - `owner: build`: implement the code changes and embed the contract in code (types/validation/assertions).
@@ -157,6 +174,27 @@ Rust is authoritative for runtime safety/security enforcement. TypeScript valida
 * Eiffel assertions overview: [https://www.eiffel.org/doc/eiffel/ET-_Design_by_Contract_%28tm%29%2C_Assertions_and_Exceptions](https://www.eiffel.org/doc/eiffel/ET-_Design_by_Contract_%28tm%29%2C_Assertions_and_Exceptions)
 
 
+## Commit + check-in protocol (required)
+After completing the single work item:
+
+1) Ensure the repository is in a good state:
+   - run the most relevant tests/lints for the change (at minimum, the affected crate/package tests)
+   - do not leave the repo failing unless the work item is explicitly `blocked`
+
+2) Stage and commit:
+   - include code + tests + bundle status updates + evidence updates (if any)
+   - use Conventional Commits (see below)
+
+3) Check in:
+   - do NOT start another work item
+   - ask the human whether to continue with the next work item or hand off to another agent
+
+Your final message must include:
+- which work item you completed
+- the commit hash (if you were able to commit)
+- the single question: “Continue to the next work item?” (or “Hand off?”)
+
+
 ## Export archive + final report format (canonical)
 Archive location and naming:
 - Directory: `.cbd/exports/`
@@ -257,8 +295,14 @@ If you also write `.cbd/reports/<id>.evidence.md`, it must include:
   - TS: detect package manager, then run the repo’s scripts (`lint/test/build` as applicable)
 - Notes on any tradeoffs or follow-ups (kept minimal)
 
-## Conventional Commits + git-cliff (output requirement)
-Even if you are not actually committing, you must propose a commit message:
+## Conventional Commits + git-cliff (commit requirement)
+You MUST commit after completing the assigned work item (unless the human explicitly tells you not to).
+
+If you cannot commit (e.g., missing `user.name`/`user.email`, permissions, or a dirty repo you’re not allowed to commit), then:
+- propose the exact Conventional Commit message, and
+- provide the exact `git commit` command(s) the human should run.
+
+Commit message rules:
 - Use **Conventional Commits** (feat/fix/refactor/chore/docs/test/ci/build).
 - Include a scope when useful (backend/frontend/cbd/contracts).
 - If breaking, use `!` and/or a `BREAKING CHANGE:` footer.
