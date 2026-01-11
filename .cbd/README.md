@@ -5,7 +5,7 @@ This repo is set up for **Contract‑First Development (Design by Contract)** so
 Instead of letting an agent “declare done,” we require concrete artifacts:
 
 - A **contract** that states *preconditions, postconditions, invariants, and error behavior*.
-- A **task bundle** that enumerates the steps the agent must execute (context → plan → critique → implement → test → checklist).
+- A **task bundle** (runbook) that decomposes work into build-ready work items tied to contract clause ids (`phases.plan` + `phases.build`).
 - **Acceptance tests** that prove the contract.
 - An **evidence pack** mapping each contract clause to the code/tests that prove it.
 
@@ -25,6 +25,7 @@ Your working pattern can be:
    - GPT asks up to 3 blocking questions per round (then waits) until the contract is `ready`
 3) Use Codex to run **BUILD mode**:
    - implement the contract
+   - execute the bundle’s `phases.build` work items
    - add tests/assertions
    - generate `.cbd/reports/<id>.evidence.json` (optional: `.evidence.md`)
    - run checks (Rust + TS)

@@ -93,15 +93,22 @@ Notes:
 - Avoid side effects in contract checks: predicates must be pure.
 
 ## How to write the bundle
-The bundle is the “loop checklist” the agent follows.
-In `.cbd/bundles/<id>.bundle.json`, include steps like:
-- read task seed + background
-- read relevant code
-- draft contract
-- ask questions (round N)
-- revise contract
-- set contract ready
-(Implementation/testing happens later in BUILD mode—don’t do it here.)
+The bundle is the **handoff runbook** from PLAN → CREATE: it tells the BUILD agent what to do without inventing a plan.
+
+In `.cbd/bundles/<id>.bundle.json`:
+- `phases.plan` tracks CONTRACT progress (`draft_contract` → `clarify_rounds` → `set_ready`). Update these statuses as you go.
+- `phases.build` is a list of **work items** the BUILD agent will execute. Each work item must:
+  - have a stable `id` (example: `WI-001`)
+  - set `owner` to route the work (`build` | `test` | `verify`)
+  - include a concrete `description`
+  - list the contract clause ids it is responsible for proving in `proves`
+  - list expected output files/paths in `outputs` (best effort)
+
+Coverage expectation:
+- Every contract clause id should appear in at least one `phases.build[].proves` list (the `owner: "verify"` item may have an empty `proves`).
+
+Important:
+- CONTRACT mode does **not** implement code; it only produces a build‑ready bundle and a checkable contract.
 
 ## Output requirements (what you must leave behind each round)
 At the end of each CONTRACT round, you must:

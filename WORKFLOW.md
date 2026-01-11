@@ -7,7 +7,7 @@ This workflow is designed to work well with:
 ## Files that drive the process
 - `.cbd/tasks/<id>-*.md` — short task seed (goal/context/constraints)
 - `.cbd/contracts/<id>.contract.json` — Design‑by‑Contract spec (pre/post/invariants/errors/tests)
-- `.cbd/bundles/<id>.bundle.json` — the step-by-step loop the agent must execute
+- `.cbd/bundles/<id>.bundle.json` — build runbook (phases.plan + phases.build work items)
 - `.cbd/reports/<id>.evidence.json` — machine-checkable mapping from clause ids → proving code/tests
 - (optional) `.cbd/reports/<id>.evidence.md` — human-friendly narrative + command output
 

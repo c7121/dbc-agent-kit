@@ -20,6 +20,11 @@ If either is false:
 Implement the smallest coherent diff that satisfies the contract.
 Prove every clause with tests and/or runtime assertions, and produce an evidence pack.
 
+Treat the bundle as the runbook:
+- Read `.cbd/bundles/<id>.bundle.json`.
+- Execute the `phases.build` work items (these should be build-ready).
+- Update each work item status as you complete it (`todo` → `in_progress` → `done`, etc.).
+
 ## Rules
 - Implement the smallest coherent diff that satisfies the contract.
 - For each contract clause (pre/post/invariant/error/acceptance test), add:

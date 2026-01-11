@@ -33,7 +33,7 @@ CI/verification must use:
 
 ## Workflow (two modes)
 ### CONTRACT mode (no code changes)
-Goal: converge on an implementable contract + a concrete task bundle an agent can loop over.
+Goal: converge on an implementable contract + a **build-ready** task bundle the BUILD agent can execute.
 
 Outputs (create/update):
 - `.cbd/contracts/<id>.contract.json`
@@ -64,7 +64,7 @@ Rules:
 
 ## Project layout
 - `.cbd/tasks/0001-*.md` — task intent + context (human seed)
-- `.cbd/bundles/0001.bundle.json` — step checklist the agent loops over
+- `.cbd/bundles/0001.bundle.json` — build runbook (phases.plan + phases.build work items)
 - `.cbd/contracts/0001.contract.json` — Design‑by‑Contract artifact
 - `.cbd/prompts/` — saved prompts for CONTRACT and BUILD modes
 - `.cbd/reports/` — evidence packs (what proves what)
