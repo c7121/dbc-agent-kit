@@ -74,7 +74,10 @@
               "step": {
                 "type": "string",
                 "enum": [
+                  "context",
                   "draft_contract",
+                  "critique_contract",
+                  "revise_contract",
                   "clarify_rounds",
                   "set_ready"
                 ]

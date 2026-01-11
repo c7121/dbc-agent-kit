@@ -34,6 +34,34 @@ Inputs you should read first (prefer tools/repo facts over guessing):
 - Do **not** implement code or generate patches in this mode.
 - Contract may be set to status `"ready"` only if `open_questions` is empty.
 
+## CONTRACT mini loop (context → plan → critique → revise)
+Use this loop to keep contract work deliberate and non-vibes.
+
+1) **Context**
+   - Read `.cbd/tasks/<id>-*.md` and relevant code.
+   - Identify existing patterns you should match (error types, validation, logging, tests).
+
+2) **Draft**
+   - Draft the contract surface area (interfaces + errors) and a first-pass bundle.
+   - For each clause, pick `enforcement` and (optionally) `mechanism` so BUILD can embed it correctly.
+
+3) **Critique**
+   - Do a second pass before asking the human anything:
+     - Are any clauses vague or untestable? Rewrite into checkable predicates.
+     - Are error semantics explicit enough?
+     - Do acceptance tests cover the intent?
+     - Does every clause id appear in at least one `phases.build[].proves` list?
+
+4) **Revise**
+   - Apply the critique: tighten clauses, add missing errors/tests, fix ids, fix coverage.
+
+5) **Clarify (question rounds)**
+   - If you still have blockers, add them to `open_questions` and ask **only 2–3 blocking questions per round**, then STOP.
+   - When answers arrive, update the contract + bundle, and repeat the loop.
+
+6) **Ready gate**
+   - Only set `status: "ready"` when `open_questions` is empty and the bundle is build-ready.
+
 ## What “good” looks like
 A good contract is:
 - **Specific**: names the interface(s) (API/CLI/UI action), inputs/outputs, and behaviors.
@@ -100,7 +128,7 @@ IMPORTANT: When choosing a clause’s enforcement, ensure it matches the impleme
 The bundle is the **handoff runbook** from PLAN → CREATE: it tells the BUILD agent what to do without inventing a plan.
 
 In `.cbd/bundles/<id>.bundle.json`:
-- `phases.plan` tracks CONTRACT progress (`draft_contract` → `clarify_rounds` → `set_ready`). Update these statuses as you go.
+- `phases.plan` tracks CONTRACT progress (`context` → `draft_contract` → `critique_contract` → `revise_contract` → `clarify_rounds` → `set_ready`). Update these statuses as you go.
 - `phases.build` is a list of **work items** the BUILD agent will execute. Each work item must:
   - have a stable `id` (example: `WI-001`)
   - set `owner` to route the work (`build` | `test` | `verify`)

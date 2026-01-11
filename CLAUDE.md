@@ -2,14 +2,12 @@
 
 This repo uses **Contract‑First Development (Design by Contract)**.
 
-Follow the workflow described in:
+## Canonical mode prompts (use these as the source of truth)
+- CONTRACT mode: @.cbd/prompts/CONTRACT.md
+- BUILD mode: @.cbd/prompts/BUILD.md
+
+## Repo guardrails
 - @AGENTS.md
-- @WORKFLOW.md
 
-Mode prompts (use exactly):
-- @.cbd/prompts/CONTRACT.md
-- @.cbd/prompts/BUILD.md
-
-House rules:
-- Ask at most **3** blocking questions per round, then wait. Repeat until `open_questions` is empty.
-- Do not implement while contract status is `draft`.
+Notes:
+- Mode prompts are canonical; avoid duplicating their rules elsewhere.

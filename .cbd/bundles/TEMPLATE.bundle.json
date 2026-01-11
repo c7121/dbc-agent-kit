@@ -12,7 +12,22 @@
   "phases": {
     "plan": [
       {
+        "step": "context",
+        "status": "todo",
+        "notes": ""
+      },
+      {
         "step": "draft_contract",
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "step": "critique_contract",
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "step": "revise_contract",
         "status": "todo",
         "notes": ""
       },
