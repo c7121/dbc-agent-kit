@@ -537,6 +537,7 @@ fn cbd_verify(id: &str) -> Result<i32> {
     let cbd = cbd_root()?;
 
     let contract_path = cbd.join("contracts").join(format!("{id}.contract.json"));
+    let bundle_path = cbd.join("bundles").join(format!("{id}.bundle.json"));
     let evidence_path = cbd.join("reports").join(format!("{id}.evidence.json"));
 
     if !contract_path.exists() {
@@ -576,6 +577,60 @@ fn cbd_verify(id: &str) -> Result<i32> {
         return Ok(3);
     }
 
+    if !bundle_path.exists() {
+        println!("Missing bundle: {}", bundle_path.display());
+        return Ok(2);
+    }
+
+    let bundle = match read_json(&bundle_path) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Invalid JSON in {}: {e}", bundle_path.display());
+            return Ok(3);
+        }
+    };
+
+    let planned = match collect_bundle_planned_clause_ids(&bundle) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Invalid bundle.json in {}: {e:#}", bundle_path.display());
+            return Ok(3);
+        }
+    };
+
+    // Bundle hygiene: `phases.build[].proves` must reference only known clause ids.
+    let unknown_in_bundle: Vec<String> = planned
+        .iter()
+        .filter(|cid| !clause_ids.contains(*cid))
+        .cloned()
+        .collect();
+    if !unknown_in_bundle.is_empty() {
+        println!("Bundle references unknown clause ids in phases.build[].proves:");
+        for cid in unknown_in_bundle {
+            println!("  - {cid}");
+        }
+        return Ok(3);
+    }
+
+    // Planning coverage: every clause must be assigned to at least one build work item.
+    // This keeps the handoff mechanical and makes delegation possible.
+    let unplanned: Vec<String> = clause_ids
+        .iter()
+        .filter(|cid| !planned.contains(*cid))
+        .cloned()
+        .collect();
+    if !unplanned.is_empty() {
+        println!(
+            "Bundle planning coverage missing for contract {id}: {}/{} clauses not assigned",
+            unplanned.len(),
+            clause_ids.len()
+        );
+        for cid in unplanned {
+            println!("  - {cid}");
+        }
+        return Ok(4);
+    }
+
     if !evidence_path.exists() {
         println!("Missing evidence: {}", evidence_path.display());
         return Ok(2);
@@ -598,7 +653,7 @@ fn cbd_verify(id: &str) -> Result<i32> {
         return Ok(3);
     }
 
-    let proven = match collect_proven_clause_ids(&evidence) {
+    let proven = match collect_proven_clause_ids(&evidence, &clause_ids) {
         Ok(ids) => ids,
         Err(e) => {
             println!(
@@ -867,7 +922,10 @@ fn collect_error_clause_ids_from_array(
     Ok(())
 }
 
-fn collect_proven_clause_ids(evidence: &Value) -> Result<HashSet<String>> {
+fn collect_proven_clause_ids(
+    evidence: &Value,
+    allowed_clause_ids: &BTreeSet<String>,
+) -> Result<HashSet<String>> {
     let obj = evidence
         .as_object()
         .ok_or_else(|| anyhow!("Evidence must be a JSON object"))?;
@@ -889,6 +947,13 @@ fn collect_proven_clause_ids(evidence: &Value) -> Result<HashSet<String>> {
             .get("clause_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow!("Missing string {ctx}.clause_id"))?;
+
+        if !allowed_clause_ids.contains(clause_id) {
+            return Err(anyhow!(
+                "Unknown clause id in evidence.json at {ctx}.clause_id: {clause_id}"
+            ));
+        }
+
         let proofs = eobj
             .get("proofs")
             .ok_or_else(|| anyhow!("Missing {ctx}.proofs"))?
@@ -902,6 +967,64 @@ fn collect_proven_clause_ids(evidence: &Value) -> Result<HashSet<String>> {
     }
 
     Ok(proven)
+}
+
+fn collect_bundle_planned_clause_ids(bundle: &Value) -> Result<BTreeSet<String>> {
+    let mut planned = BTreeSet::<String>::new();
+    let mut work_item_ids = HashSet::<String>::new();
+
+    let bundle_obj = bundle
+        .as_object()
+        .ok_or_else(|| anyhow!("Bundle must be a JSON object"))?;
+
+    let phases = bundle_obj
+        .get("phases")
+        .ok_or_else(|| anyhow!("Missing phases"))?
+        .as_object()
+        .ok_or_else(|| anyhow!("Expected object at phases"))?;
+
+    let build = phases
+        .get("build")
+        .ok_or_else(|| anyhow!("Missing phases.build"))?
+        .as_array()
+        .ok_or_else(|| anyhow!("Expected array at phases.build"))?;
+
+    for (i, wi) in build.iter().enumerate() {
+        let ctx = format!("phases.build[{i}]");
+        let wi_obj = wi
+            .as_object()
+            .ok_or_else(|| anyhow!("Expected object at {ctx}"))?;
+
+        // Basic hygiene: work item ids must be present and unique.
+        let wi_id = wi_obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing string {ctx}.id"))?;
+        if wi_id.trim().is_empty() {
+            return Err(anyhow!("Empty string {ctx}.id"));
+        }
+        if !work_item_ids.insert(wi_id.to_string()) {
+            return Err(anyhow!("Duplicate work item id in phases.build: {wi_id}"));
+        }
+
+        let proves = wi_obj
+            .get("proves")
+            .ok_or_else(|| anyhow!("Missing {ctx}.proves"))?
+            .as_array()
+            .ok_or_else(|| anyhow!("Expected array at {ctx}.proves"))?;
+
+        for (j, cid) in proves.iter().enumerate() {
+            let Some(cid) = cid.as_str() else {
+                return Err(anyhow!("Expected string at {ctx}.proves[{j}]"));
+            };
+            if cid.trim().is_empty() {
+                return Err(anyhow!("Empty string at {ctx}.proves[{j}]"));
+            }
+            planned.insert(cid.to_string());
+        }
+    }
+
+    Ok(planned)
 }
 
 fn run_checked(program: &str, args: &[&str], dir: &Path) -> Result<()> {

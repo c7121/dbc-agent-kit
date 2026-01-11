@@ -25,6 +25,25 @@ Treat the bundle as the runbook:
 - Execute the `phases.build` work items (these should be build-ready).
 - Update each work item status as you complete it (`todo` → `in_progress` → `done`, etc.).
 
+## Executing work items (consistent starting point)
+You may be asked to execute the entire `phases.build` list, or only specific work item ids (e.g. "WI-002 only").
+In either case, follow this protocol so handoffs are mechanical:
+
+1) Load the contract + bundle and confirm the precondition gate (`status: ready`, `open_questions: []`).
+2) For each assigned work item:
+   - Set `status: in_progress`.
+   - Execute the work (see owner semantics below).
+   - Update `outputs` with the paths you changed/added (best effort).
+   - Update `.cbd/reports/<id>.evidence.json` with proof locations for the clause ids in `proves`.
+   - Mark `status: done` (or `blocked` with a short note in the bundle and a `.handoff.md`).
+
+### Owner semantics (what each work item owner is expected to do)
+- `owner: build`: implement the code changes and embed the contract in code (types/validation/assertions).
+- `owner: test`: add/extend tests that prove the clause ids listed in `proves`.
+- `owner: verify`: run the hard gate (`xtask cbd verify`) and ensure evidence is complete; update artifacts to completion on success.
+- `owner: review`: do not implement code; prepare an archive and request a second-pass review (e.g. GPT-5.2 Pro).
+- `owner: docs` / `ops`: update documentation or operational artifacts when explicitly required.
+
 ## Rules
 - Implement the smallest coherent diff that satisfies the contract.
 - For each contract clause (pre/post/invariant/error/acceptance test), add:
@@ -33,6 +52,9 @@ Treat the bundle as the runbook:
 - Produce `.cbd/reports/<id>.evidence.json` mapping **clause id → proof location(s)** (required for verification).
 - Optionally maintain `.cbd/reports/<id>.evidence.md` as a human-friendly narrative that references the JSON.
 - Run the hard gate: `cargo run --manifest-path xtask/Cargo.toml -- cbd verify --id <id>` (and paste outputs into the evidence report).
+  - Note: the hard gate enforces **evidence coverage** and **bundle planning coverage**.
+    - If it fails because clause ids are missing from `phases.build[].proves`, that is a CONTRACT/bundle issue: update the bundle or hand off back to CONTRACT mode.
+    - If it fails because evidence references unknown clause ids, fix the evidence mapping (usually a typo or stale clause id).
 - Do not declare done unless acceptance tests pass.
 - No unrelated diffs. No “drive-by refactors.”
 - No new dependencies, migrations, or secret reads unless explicitly approved in `AGENTS.md`.

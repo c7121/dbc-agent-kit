@@ -131,13 +131,21 @@ In `.cbd/bundles/<id>.bundle.json`:
 - `phases.plan` tracks CONTRACT progress (`context` → `draft_contract` → `critique_contract` → `revise_contract` → `clarify_rounds` → `set_ready`). Update these statuses as you go.
 - `phases.build` is a list of **work items** the BUILD agent will execute. Each work item must:
   - have a stable `id` (example: `WI-001`)
-  - set `owner` to route the work (`build` | `test` | `verify`)
+  - set `owner` to route the work (`build` | `test` | `verify` | `review` | `docs` | `ops`)
   - include a concrete `description`
   - list the contract clause ids it is responsible for proving in `proves`
   - list expected output files/paths in `outputs` (best effort)
 
+Work items are the unit of delegation:
+- small enough to execute without inventing a plan
+- explicit about which clause ids they prove
+- assignable to specialist agents (build vs test vs verify vs review)
+
 Coverage expectation:
 - Every contract clause id should appear in at least one `phases.build[].proves` list (the `owner: "verify"` item may have an empty `proves`).
+
+Hard gate note:
+- `xtask cbd verify --id <id>` enforces both **evidence coverage** and **bundle planning coverage** (no unknown clause ids, and no unassigned clause ids).
 
 Important:
 - CONTRACT mode does **not** implement code; it only produces a build‑ready bundle and a checkable contract.
