@@ -36,7 +36,9 @@ This mode ends when we have a set of tasks ready for CONTRACT mode (one contract
 - Any existing domain docs / API docs / code patterns in the repo
 
 ## Hard rules
-- Ask **ONLY 2–3 blocking questions PER ROUND**, then STOP and wait.
+- Ask **only 2–3 blocking questions per round**, then STOP and wait for the human’s answers.
+  - You may ask more questions in later rounds.
+  - Never ask more than 3 questions in a single message.
 - Each question must state:
   - what decision it unlocks
   - what artifact section it blocks (exact markdown heading or JSON field)

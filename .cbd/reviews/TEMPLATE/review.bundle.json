@@ -37,6 +37,11 @@
         "step": "setup_artifacts",
         "status": "todo",
         "notes": "Copy templates into the review folder and fill seed."
+      },
+      {
+        "step": "framework_applicability",
+        "status": "todo",
+        "notes": "Decide which frameworks apply (STRIDE/LINDDUN/ASVS). Pre-mark non-applicable items as skipped with justification. Minimum 1, maximum all 3."
       }
     ],
     "review": [
@@ -153,7 +158,7 @@
       {
         "id": "WI-012",
         "owner": "review",
-        "description": "Run LINDDUN privacy threat modeling (skip with justification if not applicable).",
+        "description": "Run LINDDUN privacy threat modeling if privacy-relevant data/flows exist (personal data, linkability/identifiability). If not applicable, mark skipped with justification.",
         "outputs": [
           "privacy.linddun.md"
         ],
@@ -163,7 +168,7 @@
       {
         "id": "WI-013",
         "owner": "review",
-        "description": "Map control coverage using OWASP ASVS (optional but recommended for apps/services).",
+        "description": "Map control coverage using OWASP ASVS if reviewing an app/service/API (authn/authz/sessions, sensitive data, business logic). If not applicable, mark skipped with justification.",
         "outputs": [
           "controls.asvs.md"
         ],

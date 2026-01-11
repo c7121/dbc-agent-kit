@@ -28,6 +28,16 @@ List what matters most (money, keys, PII, positions, audit logs, etc.).
 ## Security / privacy constraints (explicit)
 - …
 
+## Threat modeling frameworks
+Select applicability (agents must apply all that are appropriate; minimum 1, maximum all 3):
+- STRIDE: applicable (default)
+- LINDDUN: applicable | not_applicable | unknown
+- OWASP ASVS: applicable | not_applicable | unknown
+
+Rationale / notes:
+- …
+
+
 ## Known risks / incidents / history (if any)
 - …
 

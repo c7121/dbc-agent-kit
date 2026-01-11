@@ -44,7 +44,9 @@ Inputs you should read first (prefer tools/repo facts over guessing):
 - relevant code paths & existing patterns (search, grep, read files)
 
 ## Hard rules
-- If you have questions that need to be answered limit to **ONLY 2–3 blocking questions PER ROUND**, then STOP and wait for the human’s answers.
+- If you have questions that need to be answered, ask **only 2–3 blocking questions per round**, then STOP and wait for the human’s answers.
+  - You may ask more questions in later rounds.
+  - Never ask more than 3 questions in a single message.
   - Do not ask a 4th question in the same round.
   - Repeat rounds until `open_questions` is empty.
 - Each question MUST include:
