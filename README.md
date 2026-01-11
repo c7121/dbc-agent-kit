@@ -4,10 +4,20 @@ This repo is set up for **Contract‑First Development (Design by Contract)** so
 
 ## What this gives you
 
-Two tight loops:
+Three tight loops:
 
 ```mermaid
 flowchart LR
+  subgraph REQ["REQUIREMENTS loop (DISCOVER)"]
+    R1["seed epic"]
+    R2["ask 2-3 questions (round)"]
+    R3["update epic + tasklist + task seeds"]
+    Rready{tasks ready?}
+    R1 --> R2 --> R3 --> Rready
+    Rready -- "no" --> R2
+    Rready -- "yes" --> C1
+  end
+
   subgraph CONTRACT["CONTRACT loop (PLAN)"]
     C1["read context"]
     C2["draft contract"]
@@ -46,9 +56,17 @@ The bundle is the **handoff runbook** from CONTRACT to BUILD.
 
 See:
 - `.cbd/README.md` for artifacts and quickstart
-- `.cbd/prompts/CONTRACT.md` and `.cbd/prompts/BUILD.md` for canonical agent instructions
+- `.cbd/prompts/REQUIREMENTS.md`, `.cbd/prompts/CONTRACT.md`, and `.cbd/prompts/BUILD.md` for canonical agent instructions
 
 ## Quickstart
+
+Seed an epic requirements doc (PRD-level):
+
+```bash
+cargo run --manifest-path xtask/Cargo.toml -- cbd new-epic --id EP-0001 --slug your-epic --interactive
+```
+
+Then scaffold a task bundle:
 
 ```bash
 cargo run --manifest-path xtask/Cargo.toml -- cbd new-task --id 0001 --slug data-orchestration

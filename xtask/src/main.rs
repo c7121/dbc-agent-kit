@@ -28,6 +28,10 @@ enum Cli {
 enum CbdCommand {
     /// Scaffold a new Contract‑First task bundle by copying templates in .cbd/
     NewTask(NewTaskArgs),
+
+    /// Scaffold a new Epic requirements seed (PRD-level) under .cbd/requirements/
+    NewEpic(NewEpicArgs),
+
     /// Fail fast if a contract is not ready
     ValidateReady(ValidateReadyArgs),
     /// Hard gate: ready + evidence coverage + checks
@@ -53,6 +57,28 @@ struct NewTaskArgs {
     ///
     /// This is meant for humans. Agents typically run non-interactive and let CONTRACT mode
     /// resolve ambiguity via question rounds.
+    #[arg(long, default_value_t = false)]
+    interactive: bool,
+}
+
+/// Arguments for the `cbd new-epic` subcommand.
+#[derive(Args, Debug)]
+struct NewEpicArgs {
+    /// Epic id, e.g. EP-0001
+    #[arg(long)]
+    id: String,
+
+    /// Slug, e.g. trading-bot
+    #[arg(long)]
+    slug: String,
+
+    /// Overwrite existing files if present
+    #[arg(long, default_value_t = false)]
+    force: bool,
+
+    /// Ask you a stock set of discovery questions and write a pre-filled epic requirements file.
+    ///
+    /// This is meant for humans. Agents in REQUIREMENTS mode will iterate via question rounds.
     #[arg(long, default_value_t = false)]
     interactive: bool,
 }
@@ -95,6 +121,7 @@ fn run() -> Result<i32> {
     match cli {
         Cli::Cbd(cmd) => match cmd {
             CbdCommand::NewTask(args) => cbd_new_task(&args),
+            CbdCommand::NewEpic(args) => cbd_new_epic(&args),
             CbdCommand::ValidateReady(args) => cbd_validate_ready(&args.id),
             CbdCommand::Verify(args) => cbd_verify(&args.id),
         },
@@ -254,9 +281,12 @@ fn render_task_markdown(
     title: &str,
     goal: &str,
     user_story: &str,
+    in_scope: &str,
+    out_of_scope: &str,
+    scenarios: &str,
     context: &str,
     constraints: &str,
-    out_of_scope: &str,
+    dependencies: &str,
     unknowns: &str,
 ) -> String {
     let title = body_or(title, "Untitled");
@@ -265,13 +295,19 @@ fn render_task_markdown(
         user_story,
         "As a <user>, I want <capability> so that <benefit>.",
     );
+    let in_scope = bullet_lines(in_scope, "- TBD");
+    let out_of_scope = bullet_lines(out_of_scope, "- TBD");
+    let scenarios = body_or(
+        scenarios,
+        "### Scenario 1: <name>\nGiven …\nWhen …\nThen …\n\n### Scenario 2: <name>\nGiven …\nWhen …\nThen …",
+    );
     let context = body_or(context, "- TBD");
-    let constraints = body_or(constraints, "- TBD");
-    let out_of_scope = body_or(out_of_scope, "- TBD");
+    let constraints = bullet_lines(constraints, "- TBD");
+    let dependencies = bullet_lines(dependencies, "- (none yet)");
     let unknowns = if unknowns.trim().is_empty() {
         "- (none yet; the agent will ask in CONTRACT mode)".to_string()
     } else {
-        normalize_block(unknowns)
+        bullet_lines(unknowns, "- (none yet; the agent will ask in CONTRACT mode)")
     };
 
     // Keep this aligned with your contract-first workflow.
@@ -286,14 +322,32 @@ fn render_task_markdown(
 ## User story
 {user_story}
 
+## Scope
+
+### In scope
+{in_scope}
+
+### Out of scope
+{out_of_scope}
+
+## Acceptance scenarios (examples-first)
+Use Given/When/Then style.
+
+{scenarios}
+
 ## Context
 {context}
 
 ## Constraints
 {constraints}
 
-## Out of scope
-{out_of_scope}
+## Dependencies
+{dependencies}
+
+## Observability (optional)
+- Logs (redaction expectations if any)
+- Metrics
+- Traces
 
 ## Unknowns
 {unknowns}
@@ -307,6 +361,316 @@ If any section above is blank or vague, answer these prompts (the agent may ask 
 - Out of scope: What is explicitly excluded?
 "
     )
+}
+
+fn bullet_lines(block: &str, fallback: &str) -> String {
+    let trimmed = block.trim();
+    if trimmed.is_empty() {
+        return fallback.to_string();
+    }
+
+    trimmed
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .map(|l| {
+            if l.starts_with('-') || l.starts_with('*') {
+                l.to_string()
+            } else {
+                format!("- {l}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_epic_markdown(
+    epic_id: &str,
+    slug: &str,
+    title: &str,
+    problem: &str,
+    primary_user: &str,
+    value: &str,
+    success_metrics: &str,
+    success_timeframe: &str,
+    in_scope: &str,
+    out_of_scope: &str,
+    must_not_happen: &str,
+    security: &str,
+    compliance: &str,
+    performance: &str,
+    reliability: &str,
+    cost: &str,
+    ops: &str,
+    external_systems: &str,
+    auth_model: &str,
+    data_sources: &str,
+    data_sinks: &str,
+    runtime_env: &str,
+    scenarios: &str,
+    walking_skeleton: &str,
+) -> String {
+    let title = body_or(title, "Untitled epic");
+    let problem = body_or(problem, "- TBD");
+    let primary_user = body_or(primary_user, "TBD");
+    let value = body_or(value, "- TBD");
+    let success_metrics = body_or(success_metrics, "- TBD");
+    let success_timeframe = body_or(success_timeframe, "- TBD");
+
+    let in_scope = bullet_lines(in_scope, "- TBD");
+    let out_of_scope = bullet_lines(out_of_scope, "- TBD");
+    let must_not_happen = bullet_lines(must_not_happen, "- (none specified yet)");
+
+    let security = body_or(security, "TBD");
+    let compliance = body_or(compliance, "TBD");
+    let performance = body_or(performance, "TBD");
+    let reliability = body_or(reliability, "TBD");
+    let cost = body_or(cost, "TBD");
+    let ops = body_or(ops, "TBD");
+
+    let external_systems = bullet_lines(external_systems, "- TBD");
+    let auth_model = body_or(auth_model, "TBD");
+    let data_sources = bullet_lines(data_sources, "- TBD");
+    let data_sinks = bullet_lines(data_sinks, "- TBD");
+    let runtime_env = bullet_lines(runtime_env, "- TBD");
+
+    let scenarios = body_or(
+        scenarios,
+        "### Scenario 1: <name>\nGiven …\nWhen …\nThen …\n\n### Scenario 2: <name>\nGiven …\nWhen …\nThen …",
+    );
+    let walking_skeleton = if walking_skeleton.trim().is_empty() {
+        "- (not specified yet)".to_string()
+    } else {
+        bullet_lines(walking_skeleton, "- (not specified yet)")
+    };
+
+    format!(
+        "\
+# Epic {epic_id} — {title}
+Status: draft
+
+## Problem
+{problem}
+
+## Primary user
+- {primary_user}
+
+## Value / benefit
+{value}
+
+## Success metrics
+{success_metrics}
+
+Timeframe / measurement window:
+{success_timeframe}
+
+## Scope
+### In scope
+{in_scope}
+
+### Out of scope / Non-goals
+{out_of_scope}
+
+## Must-not-happen (safety / risk constraints)
+{must_not_happen}
+
+## Constraints
+- Security/privacy: {security}
+- Compliance/legal: {compliance}
+- Performance/latency: {performance}
+- Reliability/availability: {reliability}
+- Cost: {cost}
+- Operational constraints: {ops}
+
+## Integrations / dependencies
+- External systems:
+{external_systems}
+- Auth model: {auth_model}
+- Data sources:
+{data_sources}
+- Data sinks:
+{data_sinks}
+
+## Runtime / environment
+{runtime_env}
+
+## Acceptance scenarios (examples-first)
+Use Given/When/Then style.
+
+{scenarios}
+
+## Walking skeleton MVP
+{walking_skeleton}
+
+## Open questions
+- Q-001:
+- Q-002:
+
+## Architectural forks (ADRs)
+Only if needed. Link MADR files under `docs/decisions/`.
+
+- ADR-0001: <title> — docs/decisions/0001-<slug>.md (status: proposed/accepted/…)
+
+## C4 notes (optional)
+- Context diagram: docs/c4/{epic_id}-{slug}/context.(md|puml|mermaid)
+- Container diagram: docs/c4/{epic_id}-{slug}/container.(md|puml|mermaid)
+
+## Task backlog
+(High-level list. The machine-readable version lives in `{epic_id}-{slug}.tasklist.json`.)
+
+- T-????:
+"
+    )
+}
+
+fn cbd_new_epic(args: &NewEpicArgs) -> Result<i32> {
+    let cbd = cbd_root()?;
+
+    let req_dir = cbd.join("requirements");
+    let epic_md_path = req_dir.join(format!("{}-{}.md", args.id, args.slug));
+    let tasklist_path = req_dir.join(format!("{}-{}.tasklist.json", args.id, args.slug));
+
+    let epic_template_path = req_dir.join("TEMPLATE.epic.md");
+    let tasklist_template_path = req_dir.join("TEMPLATE.tasklist.json");
+
+    let default_title = title_from_slug(&args.slug);
+
+    let (epic_title, epic_text) = if args.interactive {
+        println!("Creating epic {}-{} interactively.", args.id, args.slug);
+        println!("Press Enter to accept defaults or skip optional fields.\n");
+
+        let title = prompt_line("Short title", Some(&default_title))?;
+
+        // Stock discovery questions (baseline for any epic)
+        let problem = prompt_block("Problem (1–3 sentences; what problem are we solving?)")?;
+        let primary_user = prompt_line("Primary user/persona", None)?;
+        let value = prompt_block("Value/benefit (who benefits, what changes, why)")?;
+
+        let success_metrics = prompt_block("Success metrics (what does success look like?)")?;
+        let success_timeframe = prompt_line(
+            "Success timeframe / measurement window (e.g., '2 weeks after launch')",
+            None,
+        )?;
+
+        let in_scope = prompt_block("In scope for the first release (one per line)")?;
+        let out_of_scope = prompt_block("Out of scope / non-goals (one per line)")?;
+
+        let must_not_happen = prompt_block(
+            "Must-not-happen safety/risk constraints (one per line; e.g., 'never leak secrets')",
+        )?;
+
+        let security = prompt_line("Security/privacy constraints [optional]", None)?;
+        let compliance = prompt_line("Compliance/legal constraints [optional]", None)?;
+        let performance = prompt_line("Performance/latency expectations [optional]", None)?;
+        let reliability = prompt_line("Reliability/availability expectations [optional]", None)?;
+        let cost = prompt_line("Cost constraints [optional]", None)?;
+        let ops = prompt_line(
+            "Operational constraints (deploy env, observability expectations) [optional]",
+            None,
+        )?;
+
+        let external_systems = prompt_block("External systems/integrations (one per line)")?;
+        let auth_model = prompt_line("Auth model (how do we authenticate?) [optional]", None)?;
+        let data_sources = prompt_block("Data sources (one per line) [optional]")?;
+        let data_sinks = prompt_block("Data sinks (one per line) [optional]")?;
+        let runtime_env = prompt_block(
+            "Runtime/environment (where will it run? local/cloud/CI; constraints) (one per line)",
+        )?;
+
+        let scenarios = prompt_block(
+            "Example scenarios (2–3; Given/When/Then). You may include headings like '### Scenario 1: ...'",
+        )?;
+
+        let walking_skeleton = prompt_block(
+            "Walking skeleton MVP (smallest end-to-end slice) [optional; one per line]",
+        )?;
+
+        let text = render_epic_markdown(
+            &args.id,
+            &args.slug,
+            &title,
+            &problem,
+            &primary_user,
+            &value,
+            &success_metrics,
+            &success_timeframe,
+            &in_scope,
+            &out_of_scope,
+            &must_not_happen,
+            &security,
+            &compliance,
+            &performance,
+            &reliability,
+            &cost,
+            &ops,
+            &external_systems,
+            &auth_model,
+            &data_sources,
+            &data_sinks,
+            &runtime_env,
+            &scenarios,
+            &walking_skeleton,
+        );
+
+        (title, text)
+    } else {
+        // Non-interactive: copy the template and replace obvious placeholders.
+        let t = read_to_string(&epic_template_path).with_context(|| {
+            format!(
+                "Missing epic template. Expected at {}",
+                epic_template_path.display()
+            )
+        })?;
+
+        let text = t
+            .replace("<EPIC_ID>", &args.id)
+            .replace("<TITLE>", &default_title)
+            .replace("<slug>", &args.slug)
+            .replace("<epic_id>", &args.id);
+
+        (default_title.clone(), text)
+    };
+
+    let mut tasklist_t = read_json(&tasklist_template_path).with_context(|| {
+        format!(
+            "Missing tasklist template. Expected at {}",
+            tasklist_template_path.display()
+        )
+    })?;
+
+    // Fill required fields
+    set_string_field(&mut tasklist_t, "epic_id", &args.id);
+    set_string_field(&mut tasklist_t, "slug", &args.slug);
+    set_string_field(&mut tasklist_t, "title", &epic_title);
+    set_string_field(&mut tasklist_t, "status", "draft");
+    // Start with an empty task list; REQUIREMENTS mode will populate.
+    {
+        let obj = ensure_object_mut(&mut tasklist_t);
+        obj.insert("tasks".to_string(), Value::Array(vec![]));
+    }
+
+    write_text(&epic_md_path, &epic_text, args.force)?;
+    write_json(&tasklist_path, &tasklist_t, args.force)?;
+
+    let root = repo_root()?;
+    println!("Created:");
+    println!(
+        "  {}",
+        epic_md_path
+            .strip_prefix(&root)
+            .unwrap_or(&epic_md_path)
+            .display()
+    );
+    println!(
+        "  {}",
+        tasklist_path
+            .strip_prefix(&root)
+            .unwrap_or(&tasklist_path)
+            .display()
+    );
+
+    Ok(0)
 }
 
 fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
@@ -376,9 +740,18 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
             "User story (As a ..., I want ..., so that ...) [optional]",
             None,
         )?;
+
+        let in_scope = prompt_block("Scope: in scope (one per line)")?;
+        let out_of_scope = prompt_block("Scope: out of scope (one per line)")?;
+        let scenarios = prompt_block(
+            "Acceptance scenarios (Given/When/Then) [optional; you may include headings like '### Scenario 1: ...']",
+        )?;
+
         let context = prompt_block("Context (background, links, current behavior)")?;
-        let constraints = prompt_block("Constraints (runtime, perf, security, compliance)")?;
-        let out_of_scope = prompt_block("Out of scope (explicitly not doing)")?;
+        let constraints = prompt_block("Constraints (runtime, perf, security, compliance) (one per line)")?;
+        let dependencies = prompt_block(
+            "Dependencies (external systems/APIs, ADRs) (one per line) [optional]",
+        )?;
         let unknowns = prompt_block("Unknowns (open questions; optional)")?;
 
         render_task_markdown(
@@ -386,9 +759,12 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
             &title,
             &goal,
             &user_story,
+            &in_scope,
+            &out_of_scope,
+            &scenarios,
             &context,
             &constraints,
-            &out_of_scope,
+            &dependencies,
             &unknowns,
         )
     } else {

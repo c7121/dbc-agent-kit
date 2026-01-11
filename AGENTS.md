@@ -7,6 +7,7 @@ The contract is the source of truth (preconditions / postconditions / invariants
 
 ## Canonical mode prompts
 Mode-specific instructions live in one place to avoid drift:
+- REQUIREMENTS mode: `.cbd/prompts/REQUIREMENTS.md`
 - CONTRACT mode: `.cbd/prompts/CONTRACT.md`
 - BUILD mode: `.cbd/prompts/BUILD.md`
 
@@ -14,7 +15,7 @@ Before doing any work, **read the relevant mode prompt and follow it exactly**.
 
 ## Global rules (apply to all modes)
 - You may read files in this repo and run read-only commands without asking for permission.
-- Ask blocking questions in rounds of **at most 3 at a time**, then STOP and wait for answers. Repeat rounds as needed.
+- Ask blocking questions in rounds of **2–3 at a time** (never 4), then STOP and wait for answers. Repeat rounds as needed.
 - Prefer evidence over assumptions: verify repo facts (search/read) before guessing.
 
 ## Hard gate
@@ -28,6 +29,7 @@ CI/verification must use:
 - TS checks fail (only if a frontend `package.json` exists, and only for scripts that exist: `lint`, `test`, `build`)
 
 ## Project layout
+- `.cbd/requirements/` — epic-level requirements seeds (PRD-level) + task lists
 - `.cbd/tasks/` — task intent + context (human seed)
 - `.cbd/contracts/` — Design‑by‑Contract artifacts
 - `.cbd/bundles/` — build runbooks (phases + build work items)

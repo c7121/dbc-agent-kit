@@ -24,6 +24,10 @@ You must produce/iterate:
 3) As tasks become clear and bounded, create task files:
 - `.cbd/tasks/<task_id>-<slug>.md`
 
+Task file format:
+- Create each task by copying `.cbd/tasks/TEMPLATE.md` and filling all sections.
+- In REQUIREMENTS mode, do **not** scaffold contracts/bundles/evidence yet (that happens in CONTRACT/BUILD).
+
 Important: This mode does NOT write `.cbd/contracts/*.contract.json` and does NOT implement code.
 This mode ends when we have a set of tasks ready for CONTRACT mode (one contract per task).
 
