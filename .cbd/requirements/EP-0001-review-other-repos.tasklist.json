@@ -1,0 +1,61 @@
+{
+  "epic_id": "EP-0001",
+  "slug": "review-other-repos",
+  "title": "Review Other Repos",
+  "status": "draft",
+  "tasks": [
+    {
+      "task_id": "0003",
+      "slug": "target-repo-support",
+      "title": "Target repo support for cbd commands",
+      "goal": "Allow cbd commands to read/write artifacts under a specified target repo.",
+      "depends_on": [],
+      "acceptance_scenarios": [
+        "Scenario: Given I run `cargo run --manifest-path <kit>/xtask/Cargo.toml -- cbd new-review` inside a target repo, when the command runs, then files are created under .cbd/reviews.",
+        "Scenario: Given a repo without .cbd, when running a cbd command, then it returns a clear error or guidance to run cbd init."
+      ],
+      "notes": "Primary UX is to run commands inside the target repo via cargo run with a manifest path to the kit.",
+      "status": "ready"
+    },
+    {
+      "task_id": "0004",
+      "slug": "prompt-discovery",
+      "title": "Prompt discovery order",
+      "goal": "Resolve prompts using local overrides by default, with `--local-prompts=false` to force canonical prompts from this repo.",
+      "depends_on": ["0003"],
+      "acceptance_scenarios": [
+        "Scenario: Given .cbd/prompts exists in the target repo, when loading REQUIREMENTS, then the local prompt is used.",
+        "Scenario: Given .cbd/prompts exists in the target repo, when loading CONTRACT with `--local-prompts=false`, then the canonical prompt path is used and the CLI logs that local prompts were disabled.",
+        "Scenario: Given no local prompts and a canonical path is discovered, when loading CONTRACT, then the canonical prompt path is used and the CLI logs that `--local-prompts=false` can override."
+      ],
+      "notes": "Override flag: --local-prompts (default true).",
+      "status": "ready"
+    },
+    {
+      "task_id": "0005",
+      "slug": "init-cbd",
+      "title": "Init command for target repo .cbd",
+      "goal": "Create the .cbd directory structure in a target repo without copying prompts.",
+      "depends_on": ["0003"],
+      "acceptance_scenarios": [
+        "Scenario: Given a repo without .cbd, when running cbd init, then required artifact folders are created without scaffolding a review or epic.",
+        "Scenario: Given a repo with .cbd, when running cbd init again, then it is idempotent and does not overwrite existing files."
+      ],
+      "notes": "Init only creates directories; no scaffolding or prompt copying.",
+      "status": "ready"
+    },
+    {
+      "task_id": "0006",
+      "slug": "docs-cross-repo",
+      "title": "Docs and examples for cross-repo reviews",
+      "goal": "Document the workflow for applying the kit to other repos, including prompt resolution and threat model reviews.",
+      "depends_on": ["0003", "0004", "0005"],
+      "acceptance_scenarios": [
+        "Scenario: Given the README instructions, a user can run two commands to init a repo and scaffold a review.",
+        "Scenario: Given the README instructions, a user can find how to force canonical prompts with `--local-prompts=false`."
+      ],
+      "notes": "",
+      "status": "ready"
+    }
+  ]
+}
