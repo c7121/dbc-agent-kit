@@ -23,8 +23,8 @@
       },
       {
         "step": "critique_contract",
-        "status": "done",
-        "notes": "- Scope/coverage gap: contract omits behavior/output invariants for new-task/new-epic/new-review and template generation despite scope promising no behavior/output changes.\n- Enforcement mismatch: XT-INV-001 and XT-INV-003..XT-INV-006 are marked static but are structural/reviewable; tighten to statically checkable predicates or add explicit tests.\n- Acceptance tests miss VFY-ERR-005 (checks failed) scenario; add to AT-VERIFY-001 or a new test.\n- XT-INV-007 uses test enforcement without a concrete check; either add a proof/test or reclassify with evidence expectations.\n- Inconsistency: scope mentions util/git, but XT-INV-006/output list omits it; reconcile the expected util module set."
+        "status": "todo",
+        "notes": ""
       },
       {
         "step": "revise_contract",
