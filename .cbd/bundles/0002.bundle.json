@@ -23,8 +23,8 @@
       },
       {
         "step": "critique_contract",
-        "status": "todo",
-        "notes": ""
+        "status": "done",
+        "notes": "- XT-INV-001 should clarify whether Clap default flags (--help/--version) are excluded or explicitly allowed; current \"only\" wording likely too strict for metadata-based tests.\n- VR-ERR-003/VFY-ERR-003/VFY-ERR-004 responses are vague; tighten to the exact multi-line outputs in xtask/src/main.rs so acceptance tests can be checkable.\n- VFY-ERR-002 bundles multiple failure modes (invalid JSON, invalid clause ids, invalid acceptance_tests.proves, evidence mismatch); consider splitting into explicit error codes or specify per-case message prefixes.\n- Scope promises templates unchanged, but tests only compare outputs against templates; add a clause/test to lock template files or relax scope accordingly.\n- Bundle artifact_paths.task points to missing .cbd/tasks/0002-xtask-modules-refactor.md; add a docs work item to create it or update artifact_paths if intentionally absent.\n- WI-002 may be too large (CLI surface/help, structure/deps, scaffolding, validate-ready, verify); consider splitting by acceptance test groups for clearer proof ownership."
       },
       {
         "step": "revise_contract",
