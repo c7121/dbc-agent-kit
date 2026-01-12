@@ -4,15 +4,17 @@
   "status": "draft",
   "scope": {
     "in": [
-      "Split xtask implementation into modules with clap CLI structs/enums centralized and each cbd subcommand handler in its own file.",
-      "Move shared helpers into util modules as applicable (paths, fs, json, template, prompt, process).",
-      "Keep the public CLI and behavior unchanged (command names, arguments, exit codes, verification logic).",
-      "Keep output formats and generated file contents unchanged relative to the current templates."
+      "Split xtask implementation into modules (cli.rs for clap types; cbd/* handlers; util/* helpers) while keeping main.rs minimal.",
+      "Preserve cbd CLI surface (subcommands, flags/args, requiredness, defaults) and help output exit code behavior (help exits 0).",
+      "Preserve validate-ready/verify exit codes and output text as specified by this contract.",
+      "Preserve new-task/new-epic/new-review scaffolding outputs as template-derived files with placeholder/section replacement rules specified in this contract.",
+      "Keep template files and generated outputs unchanged."
     ],
     "out": [
       "Add new CLI flags or subcommands.",
       "Change exit codes, error handling semantics, or verification logic.",
-      "Change JSON schema or template formats or generated outputs.",
+      "Change template contents, JSON schemas, or generated output formats/paths.",
+      "Change interactive prompt wording or add new prompts (not specified by this contract).",
       "Add new dependencies."
     ]
   },
@@ -26,7 +28,7 @@
         "postconditions": [
           {
             "id": "VR-POST-001",
-            "statement": "If the contract file exists, parses as JSON, has status \"ready\", and has no open_questions, the command exits with code 0 and prints \"Contract <id> is ready.\".",
+            "statement": "If the contract file exists, parses as JSON, has status \"ready\", and open_questions is missing, null, or an empty array, the command exits with code 0 and prints \"Contract <id> is ready.\".",
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system"
@@ -54,7 +56,7 @@
           {
             "id": "VR-ERR-003",
             "code": "NOT_READY",
-            "when": "The contract status is not \"ready\" or open_questions is non-empty.",
+            "when": "The contract status is not \"ready\" (including missing or non-string) or open_questions is a non-empty array or present but not an array/null.",
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system",
@@ -70,7 +72,7 @@
         "postconditions": [
           {
             "id": "VFY-POST-001",
-            "statement": "If all gates pass (ready/implemented contract, bundle coverage, evidence coverage, and checks), the command exits with code 0 and prints \"cbd verify <id>: OK\".",
+            "statement": "If all gates pass (contract status is \"ready\" or \"implemented\" with open_questions missing/null/empty array, bundle coverage, evidence coverage, and checks), the command exits with code 0 and prints \"cbd verify <id>: OK\".",
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system"
@@ -98,7 +100,7 @@
           {
             "id": "VFY-ERR-003",
             "code": "READY_GATE_FAILED",
-            "when": "Contract status is not \"ready\" or \"implemented\", or open_questions is non-empty.",
+            "when": "Contract status is not \"ready\" or \"implemented\" (including missing or non-string), or open_questions is a non-empty array or present but not an array/null.",
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system",
@@ -130,7 +132,7 @@
   "system_invariants": [
     {
       "id": "XT-INV-001",
-      "statement": "Clap CLI surface includes exactly these cbd subcommands and their flags/args: new-task (--id, --slug, --force default false, --interactive default false), new-epic (--id, --slug, --force default false, --interactive default false), new-review (--id, --slug, --title optional, --force default false, --interactive default false), validate-ready (--id), verify (--id). Default clap flags (e.g., --help, --version) are permitted.",
+      "statement": "Clap CLI surface includes exactly these cbd subcommands and flags/args with requiredness/defaults: new-task (--id required, --slug required, --force default false, --interactive default false), new-epic (--id required, --slug required, --force default false, --interactive default false), new-review (--id required, --slug required, --title optional, --force default false, --interactive default false), validate-ready (--id required), verify (--id required). Default clap flags (e.g., --help, --version) are permitted.",
       "enforcement": "test",
       "mechanism": "rust_test",
       "obligation": "system"
@@ -179,14 +181,14 @@
     },
     {
       "id": "XT-INV-008",
-      "statement": "Interactive scaffolding for `cbd new-task`, `cbd new-epic`, and `cbd new-review` preserves template headings and replaces placeholders as defined by the templates.",
+      "statement": "Interactive scaffolding uses template files as the base and applies only placeholder + section replacements (no other edits):\n- new-task: .cbd/tasks/TEMPLATE.md with <ID> and <short title> replacements; replace sections Goal, User story, In scope, Out of scope, Acceptance scenarios (examples-first), Context, Constraints, Dependencies, Unknowns when non-empty inputs are provided.\n- new-epic: .cbd/requirements/TEMPLATE.epic.md with <EPIC_ID>, <TITLE>, <slug>, <epic_id> replacements; replace sections Problem, Target users / stakeholders, Goals (outcomes), Success metrics, In scope, Out of scope / Non-goals, Constraints, Integrations / dependencies, User stories, Acceptance scenarios (examples-first), Open questions when non-empty inputs are provided.\n- new-review: copy .cbd/reviews/TEMPLATE/** with <REVIEW_ID>, <slug>, <TITLE> replacements; rewrite review.seed.md from template with replacements and replace Kind:, Date:, and sections What is being reviewed?, In scope, Out of scope, Assumptions, Primary assets (initial), External systems / integrations, Security / privacy constraints (explicit), Known risks / incidents / history (if any) when non-empty inputs are provided.",
       "enforcement": "test",
       "mechanism": "rust_test",
       "obligation": "system"
     },
     {
       "id": "XT-INV-009",
-      "statement": "Non-interactive scaffolding for `cbd new-task`, `cbd new-epic`, and `cbd new-review` writes outputs derived from templates with placeholder replacement only.",
+      "statement": "Non-interactive scaffolding writes outputs derived from templates with placeholder replacement only plus fixed JSON field updates:\n- new-task: write .cbd/tasks/<id>-<slug>.md from .cbd/tasks/TEMPLATE.md with <ID>/<SLUG> replacements; write .cbd/contracts/<id>.contract.json and .cbd/bundles/<id>.bundle.json from templates with id/title/slug fields set; write .cbd/reports/<id>.evidence.md from template with <ID> replacement and .cbd/reports/<id>.evidence.json with contract_id set.\n- new-epic: write .cbd/requirements/<id>-<slug>.md from TEMPLATE.epic.md with <EPIC_ID>/<TITLE>/<slug>/<epic_id> replacements; write .cbd/requirements/<id>-<slug>.tasklist.json from TEMPLATE.tasklist.json with epic_id/slug/title/status set and tasks = [].\n- new-review: copy .cbd/reviews/TEMPLATE/** to .cbd/reviews/<id>-<slug>/ with <REVIEW_ID>/<slug>/<TITLE> replacements only.",
       "enforcement": "test",
       "mechanism": "rust_test",
       "obligation": "system"
@@ -207,7 +209,7 @@
     },
     {
       "id": "AT-CLI-SURFACE-001",
-      "description": "Validate the cbd subcommand surface via Clap metadata: subcommands and flags match the contract list, with --force/--interactive defaulting false and new-review --title optional.",
+      "description": "Validate the cbd subcommand surface via Clap metadata: subcommands and flags match the contract list, --id/--slug required where specified, --force/--interactive defaulting false, and new-review --title optional.",
       "proves": [
         "XT-INV-001"
       ]
@@ -231,21 +233,21 @@
     },
     {
       "id": "AT-SCAFFOLD-INTERACTIVE-001",
-      "description": "Run interactive scaffolding tests (xtask/tests/interactive_templates.rs) to confirm template headings and placeholder replacement for new-task/new-epic/new-review outputs.",
+      "description": "Run interactive scaffolding tests to confirm outputs match templates with only the placeholder + section replacements described in XT-INV-008 for new-task/new-epic/new-review.",
       "proves": [
         "XT-INV-008"
       ]
     },
     {
       "id": "AT-SCAFFOLD-NONINTERACTIVE-001",
-      "description": "Run non-interactive scaffolding tests that execute `cbd new-task`, `cbd new-epic`, and `cbd new-review` and compare generated outputs against template-driven replacements (TEMPLATE.md, TEMPLATE.contract.json, TEMPLATE.bundle.json, TEMPLATE.evidence.md/json, TEMPLATE.epic.md, TEMPLATE.tasklist.json, reviews/TEMPLATE/*).",
+      "description": "Run non-interactive scaffolding tests that execute `cbd new-task`, `cbd new-epic`, and `cbd new-review` and compare outputs against the template-driven replacements and JSON field updates described in XT-INV-009.",
       "proves": [
         "XT-INV-009"
       ]
     },
     {
       "id": "AT-VALIDATE-READY-001",
-      "description": "Exercise `cbd validate-ready` with: missing contract (exit 2, \"Missing contract: <path>\"), invalid JSON (exit 3, line starts with \"Invalid JSON in <path>:\"), not ready/open_questions (exit 4, prints \"Contract <id> not ready:\" + status/open_questions lines), ready (exit 0, \"Contract <id> is ready.\").",
+      "description": "Exercise `cbd validate-ready` with: missing contract (exit 2, \"Missing contract: <path>\"), invalid JSON (exit 3, line starts with \"Invalid JSON in <path>:\"), not ready/open_questions (exit 4, prints \"Contract <id> not ready:\" + status/open_questions lines; include open_questions non-array case), ready (exit 0, \"Contract <id> is ready.\"; include open_questions missing and null cases).",
       "proves": [
         "VR-POST-001",
         "VR-ERR-001",
@@ -255,7 +257,7 @@
     },
     {
       "id": "AT-VERIFY-001",
-      "description": "Exercise `cbd verify` with: missing artifacts (exit 2, \"Missing contract|bundle|evidence: <path>\"), invalid JSON/schema cases (exit 3 with the VFY-ERR-002 message prefixes), not ready/open_questions (exit 4, \"Contract <id> not ready/implemented:\" + status/open_questions lines), missing planning coverage vs missing proofs (exit 4 with the VFY-ERR-004 prefixes and id lists), checks failing (exit 1, stderr includes \"<tool> exited with code <n>\" after a \"==> (cd ...) <tool> ...\" line), and a successful run (exit 0, \"cbd verify <id>: OK\").",
+      "description": "Exercise `cbd verify` with: missing artifacts (exit 2, \"Missing contract|bundle|evidence: <path>\"), invalid JSON/schema cases (exit 3 with the VFY-ERR-002 message prefixes), not ready/open_questions (exit 4, \"Contract <id> not ready/implemented:\" + status/open_questions lines; include open_questions non-array case), missing planning coverage vs missing proofs (exit 4 with the VFY-ERR-004 prefixes and id lists), checks failing (exit 1, stderr includes \"<tool> exited with code <n>\" after a \"==> (cd ...) <tool> ...\" line), and a successful run (exit 0, \"cbd verify <id>: OK\"; include open_questions missing/null cases).",
       "proves": [
         "VFY-POST-001",
         "VFY-ERR-001",

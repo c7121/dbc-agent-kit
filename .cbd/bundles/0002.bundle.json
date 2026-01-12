@@ -28,8 +28,8 @@
       },
       {
         "step": "revise_contract",
-        "status": "todo",
-        "notes": ""
+        "status": "done",
+        "notes": "Revised contract scope to match checkable behaviors; codified open_questions readiness semantics; clarified CLI requiredness; tightened scaffolding invariants and acceptance tests; updated scaffold test work item to match the detailed replacement rules."
       },
       {
         "step": "clarify_rounds",
@@ -77,7 +77,7 @@
       {
         "id": "WI-002",
         "owner": "test",
-        "description": "Add CLI surface and help-output tests for cbd subcommands (help exits 0; flags/args match contract).",
+        "description": "Add CLI surface and help-output tests for cbd subcommands (help exits 0; flags/args match contract including requiredness/defaults).",
         "proves": [
           "XT-INV-001",
           "XT-INV-002"
@@ -106,7 +106,7 @@
       {
         "id": "WI-004",
         "owner": "test",
-        "description": "Add scaffolding tests for interactive and non-interactive flows against templates.",
+        "description": "Add scaffolding tests for interactive and non-interactive flows that assert template-driven replacements and JSON field updates per XT-INV-008/009.",
         "proves": [
           "XT-INV-008",
           "XT-INV-009"
