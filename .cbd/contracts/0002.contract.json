@@ -5,7 +5,7 @@
   "scope": {
     "in": [
       "Split xtask implementation into modules with clap CLI structs/enums centralized and each cbd subcommand handler in its own file.",
-      "Move shared helpers into util modules as applicable (paths, fs, json, template, prompt, process, git).",
+      "Move shared helpers into util modules as applicable (paths, fs, json, template, prompt, process).",
       "Keep the public CLI and behavior unchanged (command names, arguments, exit codes, verification logic).",
       "Keep output formats, templates, and generated file contents unchanged."
     ],
@@ -130,9 +130,9 @@
   "system_invariants": [
     {
       "id": "XT-INV-001",
-      "statement": "CLI definitions include only the following cbd subcommands and flags (no additions/removals): new-task (--id, --slug, --force default false, --interactive default false), new-epic (--id, --slug, --force default false, --interactive default false), new-review (--id, --slug, --title optional, --force default false, --interactive default false), validate-ready (--id), verify (--id).",
-      "enforcement": "static",
-      "mechanism": "rust_module_system",
+      "statement": "Clap CLI surface exposes only the following cbd subcommands and flags (no additions/removals): new-task (--id, --slug, --force default false, --interactive default false), new-epic (--id, --slug, --force default false, --interactive default false), new-review (--id, --slug, --title optional, --force default false, --interactive default false), validate-ready (--id), verify (--id).",
+      "enforcement": "test",
+      "mechanism": "rust_test",
       "obligation": "system"
     },
     {
@@ -144,35 +144,49 @@
     },
     {
       "id": "XT-INV-003",
-      "statement": "xtask/src/main.rs only parses CLI args, calls cbd::run, and exits with the returned code; cbd command logic is not implemented in main.rs.",
-      "enforcement": "static",
-      "mechanism": "rust_module_system",
+      "statement": "xtask/src/main.rs defines only `fn main` and `fn run` and does not define `cbd_*` handler functions; cbd command logic is delegated to the cbd module.",
+      "enforcement": "test",
+      "mechanism": "rust_test",
       "obligation": "system"
     },
     {
       "id": "XT-INV-004",
-      "statement": "Clap derive types (Cli, CbdCommand, NewTaskArgs, NewEpicArgs, NewReviewArgs, ValidateReadyArgs, VerifyArgs) live in xtask/src/cli.rs.",
-      "enforcement": "static",
-      "mechanism": "rust_module_system",
+      "statement": "Clap derive types (Cli, CbdCommand, NewTaskArgs, NewEpicArgs, NewReviewArgs, ValidateReadyArgs, VerifyArgs) are defined in xtask/src/cli.rs.",
+      "enforcement": "test",
+      "mechanism": "rust_test",
       "obligation": "system"
     },
     {
       "id": "XT-INV-005",
       "statement": "cbd dispatch lives in xtask/src/cbd/mod.rs and each cbd subcommand handler is implemented in its own module file: new_task.rs, new_epic.rs, new_review.rs, validate_ready.rs, verify.rs.",
-      "enforcement": "static",
-      "mechanism": "rust_module_system",
+      "enforcement": "test",
+      "mechanism": "rust_test",
       "obligation": "system"
     },
     {
       "id": "XT-INV-006",
-      "statement": "Shared helpers are organized under xtask/src/util/{paths,fs,json,template,prompt,process}.rs and used by cbd handlers; helper logic is no longer in main.rs.",
-      "enforcement": "static",
-      "mechanism": "rust_module_system",
+      "statement": "Shared helper modules are defined under xtask/src/util/{paths,fs,json,template,prompt,process}.rs; main.rs contains no helper utilities beyond main/run.",
+      "enforcement": "test",
+      "mechanism": "rust_test",
       "obligation": "system"
     },
     {
       "id": "XT-INV-007",
-      "statement": "No new dependencies are added to xtask/Cargo.toml.",
+      "statement": "xtask/Cargo.toml dependencies remain exactly: anyhow, clap (derive), serde_json.",
+      "enforcement": "test",
+      "mechanism": "rust_test",
+      "obligation": "system"
+    },
+    {
+      "id": "XT-INV-008",
+      "statement": "Interactive scaffolding for `cbd new-task`, `cbd new-epic`, and `cbd new-review` preserves template headings and replaces placeholders as defined by the templates.",
+      "enforcement": "test",
+      "mechanism": "rust_test",
+      "obligation": "system"
+    },
+    {
+      "id": "XT-INV-009",
+      "statement": "Non-interactive scaffolding for `cbd new-task`, `cbd new-epic`, and `cbd new-review` writes outputs derived from templates with placeholder replacement only.",
       "enforcement": "test",
       "mechanism": "rust_test",
       "obligation": "system"
@@ -192,6 +206,44 @@
       ]
     },
     {
+      "id": "AT-CLI-SURFACE-001",
+      "description": "Validate the cbd subcommand surface via Clap metadata: subcommands and flags match the contract list, with --force/--interactive defaulting false and new-review --title optional.",
+      "proves": [
+        "XT-INV-001"
+      ]
+    },
+    {
+      "id": "AT-STRUCTURE-001",
+      "description": "Verify module layout: main.rs defines only main/run and contains no cbd_* handlers; cli.rs defines the clap types; cbd/mod.rs dispatches to cbd/* handler files; util modules exist under xtask/src/util/{paths,fs,json,template,prompt,process}.rs.",
+      "proves": [
+        "XT-INV-003",
+        "XT-INV-004",
+        "XT-INV-005",
+        "XT-INV-006"
+      ]
+    },
+    {
+      "id": "AT-DEPENDENCIES-001",
+      "description": "Parse xtask/Cargo.toml and assert dependencies are exactly: anyhow, clap (derive), serde_json.",
+      "proves": [
+        "XT-INV-007"
+      ]
+    },
+    {
+      "id": "AT-SCAFFOLD-INTERACTIVE-001",
+      "description": "Run interactive scaffolding tests (xtask/tests/interactive_templates.rs) to confirm template headings and placeholder replacement for new-task/new-epic/new-review outputs.",
+      "proves": [
+        "XT-INV-008"
+      ]
+    },
+    {
+      "id": "AT-SCAFFOLD-NONINTERACTIVE-001",
+      "description": "Run non-interactive scaffolding tests that execute `cbd new-task`, `cbd new-epic`, and `cbd new-review` and compare generated outputs against template-driven replacements (TEMPLATE.md, TEMPLATE.contract.json, TEMPLATE.bundle.json, TEMPLATE.evidence.md/json, TEMPLATE.epic.md, TEMPLATE.tasklist.json, reviews/TEMPLATE/*).",
+      "proves": [
+        "XT-INV-009"
+      ]
+    },
+    {
       "id": "AT-VALIDATE-READY-001",
       "description": "Exercise `cbd validate-ready` with: missing contract (exit 2), invalid JSON (exit 3), not ready/open_questions (exit 4), ready (exit 0).",
       "proves": [
@@ -203,13 +255,14 @@
     },
     {
       "id": "AT-VERIFY-001",
-      "description": "Exercise `cbd verify` with: missing artifacts (exit 2), invalid JSON/schema (exit 3), not ready/open_questions (exit 4), missing planning or proofs (exit 4), and a successful run (exit 0).",
+      "description": "Exercise `cbd verify` with: missing artifacts (exit 2), invalid JSON/schema (exit 3), not ready/open_questions (exit 4), missing planning or proofs (exit 4), checks failing (exit 1), and a successful run (exit 0).",
       "proves": [
         "VFY-POST-001",
         "VFY-ERR-001",
         "VFY-ERR-002",
         "VFY-ERR-003",
-        "VFY-ERR-004"
+        "VFY-ERR-004",
+        "VFY-ERR-005"
       ]
     }
   ],

@@ -28,8 +28,8 @@
       },
       {
         "step": "revise_contract",
-        "status": "todo",
-        "notes": ""
+        "status": "done",
+        "notes": "- Updated scope util module list (removed git) to match expected layout.\n- Reclassified structural invariants to test enforcement and tightened statements for checkability.\n- Added scaffolding invariants + acceptance tests for interactive/non-interactive outputs.\n- Added CLI surface/structure/dependency acceptance tests.\n- Extended AT-VERIFY-001 to cover checks-failed (VFY-ERR-005)."
       },
       {
         "step": "clarify_rounds",
@@ -77,9 +77,17 @@
       {
         "id": "WI-002",
         "owner": "test",
-        "description": "Smoke the CLI and exit-code behavior: run help commands and validate-ready/verify scenarios per acceptance tests; record evidence.",
+        "description": "Run acceptance tests for CLI help/surface, module layout, scaffolding outputs (interactive/non-interactive), dependency list, and validate-ready/verify exit codes; record evidence.",
         "proves": [
+          "XT-INV-001",
           "XT-INV-002",
+          "XT-INV-003",
+          "XT-INV-004",
+          "XT-INV-005",
+          "XT-INV-006",
+          "XT-INV-007",
+          "XT-INV-008",
+          "XT-INV-009",
           "VR-POST-001",
           "VR-ERR-001",
           "VR-ERR-002",
@@ -91,7 +99,9 @@
           "VFY-ERR-004",
           "VFY-ERR-005"
         ],
-        "outputs": [],
+        "outputs": [
+          "xtask/tests/contract_0002.rs"
+        ],
         "status": "todo"
       },
       {
