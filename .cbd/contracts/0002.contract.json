@@ -17,16 +17,202 @@
     ]
   },
   "interfaces": {
-    "commands": []
+    "commands": [
+      {
+        "name": "cbd validate-ready --id <id>",
+        "input_schema": "CLI args: --id <id>",
+        "output_schema": "Exit code + stdout/stderr",
+        "preconditions": [],
+        "postconditions": [
+          {
+            "id": "VR-POST-001",
+            "statement": "If the contract file exists, parses as JSON, has status \"ready\", and has no open_questions, the command exits with code 0 and prints \"Contract <id> is ready.\".",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system"
+          }
+        ],
+        "errors": [
+          {
+            "id": "VR-ERR-001",
+            "code": "MISSING_CONTRACT",
+            "when": "The contract file .cbd/contracts/<id>.contract.json does not exist.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system",
+            "response": "Exit code 2 and prints \"Missing contract: <path>\"."
+          },
+          {
+            "id": "VR-ERR-002",
+            "code": "INVALID_CONTRACT_JSON",
+            "when": "The contract file exists but is invalid JSON.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system",
+            "response": "Exit code 3 and prints \"Invalid JSON in <path>: ...\"."
+          },
+          {
+            "id": "VR-ERR-003",
+            "code": "NOT_READY",
+            "when": "The contract status is not \"ready\" or open_questions is non-empty.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system",
+            "response": "Exit code 4 and prints status/open_questions details."
+          }
+        ]
+      },
+      {
+        "name": "cbd verify --id <id>",
+        "input_schema": "CLI args: --id <id>",
+        "output_schema": "Exit code + stdout/stderr",
+        "preconditions": [],
+        "postconditions": [
+          {
+            "id": "VFY-POST-001",
+            "statement": "If all gates pass (ready/implemented contract, bundle coverage, evidence coverage, and checks), the command exits with code 0 and prints \"cbd verify <id>: OK\".",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system"
+          }
+        ],
+        "errors": [
+          {
+            "id": "VFY-ERR-001",
+            "code": "MISSING_ARTIFACT",
+            "when": "The contract, bundle, or evidence file is missing.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system",
+            "response": "Exit code 2 and prints \"Missing <artifact>: <path>\"."
+          },
+          {
+            "id": "VFY-ERR-002",
+            "code": "INVALID_JSON_OR_SCHEMA",
+            "when": "Contract/bundle/evidence JSON is invalid or fails structural validation (invalid clause ids, invalid acceptance_tests.proves, unknown clause ids in bundle or evidence).",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system",
+            "response": "Exit code 3 and prints the validation error."
+          },
+          {
+            "id": "VFY-ERR-003",
+            "code": "READY_GATE_FAILED",
+            "when": "Contract status is not \"ready\" or \"implemented\", or open_questions is non-empty.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system",
+            "response": "Exit code 4 and prints the not-ready details."
+          },
+          {
+            "id": "VFY-ERR-004",
+            "code": "COVERAGE_MISSING",
+            "when": "Bundle planning coverage is missing or evidence lacks required clause proofs.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system",
+            "response": "Exit code 4 and prints missing clause ids."
+          },
+          {
+            "id": "VFY-ERR-005",
+            "code": "CHECKS_FAILED",
+            "when": "Cargo or TypeScript checks invoked by verify fail.",
+            "enforcement": "runtime",
+            "mechanism": "rust_runtime_validation",
+            "obligation": "system",
+            "response": "Exit code 1 and prints the failing command and exit code."
+          }
+        ]
+      }
+    ]
   },
   "data_contracts": [],
-  "system_invariants": [],
+  "system_invariants": [
+    {
+      "id": "XT-INV-001",
+      "statement": "CLI definitions include only the following cbd subcommands and flags (no additions/removals): new-task (--id, --slug, --force default false, --interactive default false), new-epic (--id, --slug, --force default false, --interactive default false), new-review (--id, --slug, --title optional, --force default false, --interactive default false), validate-ready (--id), verify (--id).",
+      "enforcement": "static",
+      "mechanism": "rust_module_system",
+      "obligation": "system"
+    },
+    {
+      "id": "XT-INV-002",
+      "statement": "Help output renders successfully (exit code 0) for `xtask --help`, `xtask cbd --help`, and each cbd subcommand `--help`.",
+      "enforcement": "test",
+      "mechanism": "rust_test",
+      "obligation": "system"
+    },
+    {
+      "id": "XT-INV-003",
+      "statement": "xtask/src/main.rs only parses CLI args, calls cbd::run, and exits with the returned code; cbd command logic is not implemented in main.rs.",
+      "enforcement": "static",
+      "mechanism": "rust_module_system",
+      "obligation": "system"
+    },
+    {
+      "id": "XT-INV-004",
+      "statement": "Clap derive types (Cli, CbdCommand, NewTaskArgs, NewEpicArgs, NewReviewArgs, ValidateReadyArgs, VerifyArgs) live in xtask/src/cli.rs.",
+      "enforcement": "static",
+      "mechanism": "rust_module_system",
+      "obligation": "system"
+    },
+    {
+      "id": "XT-INV-005",
+      "statement": "cbd dispatch lives in xtask/src/cbd/mod.rs and each cbd subcommand handler is implemented in its own module file: new_task.rs, new_epic.rs, new_review.rs, validate_ready.rs, verify.rs.",
+      "enforcement": "static",
+      "mechanism": "rust_module_system",
+      "obligation": "system"
+    },
+    {
+      "id": "XT-INV-006",
+      "statement": "Shared helpers are organized under xtask/src/util/{paths,fs,json,template,prompt,process}.rs and used by cbd handlers; helper logic is no longer in main.rs.",
+      "enforcement": "static",
+      "mechanism": "rust_module_system",
+      "obligation": "system"
+    },
+    {
+      "id": "XT-INV-007",
+      "statement": "No new dependencies are added to xtask/Cargo.toml.",
+      "enforcement": "test",
+      "mechanism": "rust_test",
+      "obligation": "system"
+    }
+  ],
   "observability": {
     "logs": [],
     "metrics": [],
     "traces": []
   },
-  "acceptance_tests": [],
+  "acceptance_tests": [
+    {
+      "id": "AT-CLI-HELP-001",
+      "description": "Help output exits 0 for: `cargo run --manifest-path xtask/Cargo.toml -- --help`, `cargo run --manifest-path xtask/Cargo.toml -- cbd --help`, and each cbd subcommand help (`new-task`, `new-epic`, `new-review`, `validate-ready`, `verify`).",
+      "proves": [
+        "XT-INV-002"
+      ]
+    },
+    {
+      "id": "AT-VALIDATE-READY-001",
+      "description": "Exercise `cbd validate-ready` with: missing contract (exit 2), invalid JSON (exit 3), not ready/open_questions (exit 4), ready (exit 0).",
+      "proves": [
+        "VR-POST-001",
+        "VR-ERR-001",
+        "VR-ERR-002",
+        "VR-ERR-003"
+      ]
+    },
+    {
+      "id": "AT-VERIFY-001",
+      "description": "Exercise `cbd verify` with: missing artifacts (exit 2), invalid JSON/schema (exit 3), not ready/open_questions (exit 4), missing planning or proofs (exit 4), and a successful run (exit 0).",
+      "proves": [
+        "VFY-POST-001",
+        "VFY-ERR-001",
+        "VFY-ERR-002",
+        "VFY-ERR-003",
+        "VFY-ERR-004"
+      ]
+    }
+  ],
   "open_questions": [],
   "assumptions": [],
   "definition_of_done": [

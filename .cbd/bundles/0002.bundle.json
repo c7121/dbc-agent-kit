@@ -18,8 +18,8 @@
       },
       {
         "step": "draft_contract",
-        "status": "todo",
-        "notes": ""
+        "status": "done",
+        "notes": "Drafted contract clauses for module layout, CLI surface, and validate-ready/verify exit code behavior; added acceptance tests and mapped clause ids to build/test work items."
       },
       {
         "step": "critique_contract",
@@ -46,16 +46,51 @@
       {
         "id": "WI-001",
         "owner": "build",
-        "description": "TBD: implement the main code changes for this task. Prefer splitting into multiple small work items (by component/integration or clause groups) instead of one mega-WI.",
-        "proves": [],
-        "outputs": [],
+        "description": "Refactor xtask into modules: move clap CLI definitions to cli.rs, cbd dispatch/handlers to cbd/*, and shared helpers to util/* while keeping main.rs minimal.",
+        "proves": [
+          "XT-INV-001",
+          "XT-INV-003",
+          "XT-INV-004",
+          "XT-INV-005",
+          "XT-INV-006",
+          "XT-INV-007"
+        ],
+        "outputs": [
+          "xtask/src/main.rs",
+          "xtask/src/cli.rs",
+          "xtask/src/cbd/mod.rs",
+          "xtask/src/cbd/new_task.rs",
+          "xtask/src/cbd/new_epic.rs",
+          "xtask/src/cbd/new_review.rs",
+          "xtask/src/cbd/validate_ready.rs",
+          "xtask/src/cbd/verify.rs",
+          "xtask/src/util/mod.rs",
+          "xtask/src/util/paths.rs",
+          "xtask/src/util/fs.rs",
+          "xtask/src/util/json.rs",
+          "xtask/src/util/template.rs",
+          "xtask/src/util/prompt.rs",
+          "xtask/src/util/process.rs"
+        ],
         "status": "todo"
       },
       {
         "id": "WI-002",
         "owner": "test",
-        "description": "TBD: add/extend tests proving the contract clause ids. Prefer grouping tests by acceptance scenario and linking each test to clause ids.",
-        "proves": [],
+        "description": "Smoke the CLI and exit-code behavior: run help commands and validate-ready/verify scenarios per acceptance tests; record evidence.",
+        "proves": [
+          "XT-INV-002",
+          "VR-POST-001",
+          "VR-ERR-001",
+          "VR-ERR-002",
+          "VR-ERR-003",
+          "VFY-POST-001",
+          "VFY-ERR-001",
+          "VFY-ERR-002",
+          "VFY-ERR-003",
+          "VFY-ERR-004",
+          "VFY-ERR-005"
+        ],
         "outputs": [],
         "status": "todo"
       },
