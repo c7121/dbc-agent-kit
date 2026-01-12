@@ -28,8 +28,8 @@
       },
       {
         "step": "revise_contract",
-        "status": "done",
-        "notes": "- Clarified XT-INV-001 to allow clap default flags and tightened validate-ready/verify error outputs to exact message prefixes.\n- Expanded VFY-ERR-002/VFY-ERR-004 responses and updated acceptance test descriptions to match real outputs.\n- Narrowed scope to template-driven outputs and added a template-change assumption.\n- Split the test work item into focused items and added a docs work item for the missing task seed."
+        "status": "todo",
+        "notes": ""
       },
       {
         "step": "clarify_rounds",
