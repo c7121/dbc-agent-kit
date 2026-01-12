@@ -30,6 +30,87 @@
           "details": "Interactive review scaffolding reads .cbd/reviews/TEMPLATE/review.seed.md via read_to_string."
         }
       ]
+    },
+    {
+      "clause_id": "NT-POST-001",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_task_renders_template_and_replaces_sections"
+        }
+      ]
+    },
+    {
+      "clause_id": "NT-POST-002",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_task_renders_template_and_replaces_sections"
+        }
+      ]
+    },
+    {
+      "clause_id": "NT-POST-003",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_task_renders_template_and_replaces_sections"
+        }
+      ]
+    },
+    {
+      "clause_id": "NE-POST-001",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_epic_renders_template_and_replaces_sections"
+        }
+      ]
+    },
+    {
+      "clause_id": "NE-POST-002",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_epic_renders_template_and_replaces_sections"
+        }
+      ]
+    },
+    {
+      "clause_id": "NE-POST-003",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_epic_renders_template_and_replaces_sections"
+        }
+      ]
+    },
+    {
+      "clause_id": "NR-POST-001",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_review_renders_template_and_replaces_sections"
+        }
+      ]
+    },
+    {
+      "clause_id": "NR-POST-002",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_review_renders_template_and_replaces_sections"
+        }
+      ]
+    },
+    {
+      "clause_id": "NR-POST-003",
+      "proofs": [
+        {
+          "kind": "test",
+          "location": "xtask/tests/interactive_templates.rs::interactive_review_renders_template_and_replaces_sections"
+        }
+      ]
     }
   ]
 }

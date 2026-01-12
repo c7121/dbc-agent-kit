@@ -74,9 +74,10 @@
           "NR-POST-003"
         ],
         "outputs": [
-          "xtask/tests/interactive_templates.rs"
+          "xtask/tests/interactive_templates.rs",
+          ".cbd/reports/0001.evidence.json"
         ],
-        "status": "todo"
+        "status": "done"
       },
       {
         "id": "WI-003",
