@@ -38,8 +38,8 @@
       },
       {
         "step": "set_ready",
-        "status": "todo",
-        "notes": ""
+        "status": "done",
+        "notes": "Contract status set to ready; bundle build work items remain scoped and mapped to clause ids."
       }
     ],
     "build": [

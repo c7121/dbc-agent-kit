@@ -1,7 +1,7 @@
 {
   "id": "0002",
   "title": "Refactor xtask into modules",
-  "status": "draft",
+  "status": "ready",
   "scope": {
     "in": [
       "Split xtask implementation into modules (cli.rs for clap types; cbd/* handlers; util/* helpers) while keeping main.rs minimal.",
