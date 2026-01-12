@@ -10,7 +10,9 @@
           "location": "<path:line or test name>",
           "details": "<optional>"
         }
-      ]
+      ],
+      "reviewed_at": "2026-01-11T15:30:00Z",
+      "reviewed_by": "agent:claude-opus-4"
     }
   ]
 }

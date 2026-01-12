@@ -70,7 +70,7 @@
       {
         "id": "WI-004",
         "owner": "review",
-        "description": "Optional: package a review archive and request a second-pass review (e.g., GPT-5.2 Pro).",
+        "description": "Package a review archive and request a second-pass review (e.g., GPT-5.2 Pro).",
         "proves": [],
         "outputs": [],
         "status": "todo"
