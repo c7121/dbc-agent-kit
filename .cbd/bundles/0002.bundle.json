@@ -28,8 +28,8 @@
       },
       {
         "step": "revise_contract",
-        "status": "todo",
-        "notes": ""
+        "status": "done",
+        "notes": "- Clarified XT-INV-001 to allow clap default flags and tightened validate-ready/verify error outputs to exact message prefixes.\n- Expanded VFY-ERR-002/VFY-ERR-004 responses and updated acceptance test descriptions to match real outputs.\n- Narrowed scope to template-driven outputs and added a template-change assumption.\n- Split the test work item into focused items and added a docs work item for the missing task seed."
       },
       {
         "step": "clarify_rounds",
@@ -77,21 +77,66 @@
       {
         "id": "WI-002",
         "owner": "test",
-        "description": "Run acceptance tests for CLI help/surface, module layout, scaffolding outputs (interactive/non-interactive), dependency list, and validate-ready/verify exit codes; record evidence.",
+        "description": "Add CLI surface and help-output tests for cbd subcommands (help exits 0; flags/args match contract).",
         "proves": [
           "XT-INV-001",
-          "XT-INV-002",
+          "XT-INV-002"
+        ],
+        "outputs": [
+          "xtask/tests/contract_0002_cli.rs"
+        ],
+        "status": "todo"
+      },
+      {
+        "id": "WI-003",
+        "owner": "test",
+        "description": "Add module layout and dependency list tests (main.rs minimal, cli.rs types, cbd/* handlers, util modules, Cargo.toml deps).",
+        "proves": [
           "XT-INV-003",
           "XT-INV-004",
           "XT-INV-005",
           "XT-INV-006",
-          "XT-INV-007",
+          "XT-INV-007"
+        ],
+        "outputs": [
+          "xtask/tests/contract_0002_structure.rs"
+        ],
+        "status": "todo"
+      },
+      {
+        "id": "WI-004",
+        "owner": "test",
+        "description": "Add scaffolding tests for interactive and non-interactive flows against templates.",
+        "proves": [
           "XT-INV-008",
-          "XT-INV-009",
+          "XT-INV-009"
+        ],
+        "outputs": [
+          "xtask/tests/interactive_templates.rs",
+          "xtask/tests/contract_0002_scaffold.rs"
+        ],
+        "status": "todo"
+      },
+      {
+        "id": "WI-005",
+        "owner": "test",
+        "description": "Add validate-ready exit-code/output tests for missing/invalid/not-ready/ready cases.",
+        "proves": [
           "VR-POST-001",
           "VR-ERR-001",
           "VR-ERR-002",
-          "VR-ERR-003",
+          "VR-ERR-003"
+        ],
+        "outputs": [
+          "xtask/tests/contract_0002_validate_ready.rs"
+        ],
+        "status": "todo"
+      },
+      {
+        "id": "WI-006",
+        "owner": "test",
+        "description": "Add verify exit-code/output tests for missing artifacts, invalid JSON/schema cases, readiness gate, coverage gaps, checks failing, and success.",
+        "proves": [
           "VFY-POST-001",
           "VFY-ERR-001",
           "VFY-ERR-002",
@@ -100,12 +145,22 @@
           "VFY-ERR-005"
         ],
         "outputs": [
-          "xtask/tests/contract_0002.rs"
+          "xtask/tests/contract_0002_verify.rs"
         ],
         "status": "todo"
       },
       {
-        "id": "WI-003",
+        "id": "WI-007",
+        "owner": "docs",
+        "description": "Create task seed .cbd/tasks/0002-xtask-modules-refactor.md with scope/context aligned to the contract (or update artifact_paths.task if intentionally absent).",
+        "proves": [],
+        "outputs": [
+          ".cbd/tasks/0002-xtask-modules-refactor.md"
+        ],
+        "status": "todo"
+      },
+      {
+        "id": "WI-008",
         "owner": "verify",
         "description": "Run `xtask cbd verify --id 0002` and update evidence.json with proof locations.",
         "proves": [],
@@ -113,7 +168,7 @@
         "status": "todo"
       },
       {
-        "id": "WI-004",
+        "id": "WI-009",
         "owner": "review",
         "description": "Package a review archive and request a second-pass review (e.g., GPT-5.2 Pro).",
         "proves": [],

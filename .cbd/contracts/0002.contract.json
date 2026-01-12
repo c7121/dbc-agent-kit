@@ -7,7 +7,7 @@
       "Split xtask implementation into modules with clap CLI structs/enums centralized and each cbd subcommand handler in its own file.",
       "Move shared helpers into util modules as applicable (paths, fs, json, template, prompt, process).",
       "Keep the public CLI and behavior unchanged (command names, arguments, exit codes, verification logic).",
-      "Keep output formats, templates, and generated file contents unchanged."
+      "Keep output formats and generated file contents unchanged relative to the current templates."
     ],
     "out": [
       "Add new CLI flags or subcommands.",
@@ -49,7 +49,7 @@
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system",
-            "response": "Exit code 3 and prints \"Invalid JSON in <path>: ...\"."
+            "response": "Exit code 3 and prints a line starting with \"Invalid JSON in <path>:\" (including the parse error)."
           },
           {
             "id": "VR-ERR-003",
@@ -58,7 +58,7 @@
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system",
-            "response": "Exit code 4 and prints status/open_questions details."
+            "response": "Exit code 4 and prints:\nContract <id> not ready:\n  status=\"<status>\"\n  open_questions=<json>"
           }
         ]
       },
@@ -89,11 +89,11 @@
           {
             "id": "VFY-ERR-002",
             "code": "INVALID_JSON_OR_SCHEMA",
-            "when": "Contract/bundle/evidence JSON is invalid or fails structural validation (invalid clause ids, invalid acceptance_tests.proves, unknown clause ids in bundle or evidence).",
+            "when": "Contract/bundle/evidence JSON is invalid or structural validation fails (invalid clause ids, invalid acceptance_tests.proves, invalid bundle structure, unknown clause ids in phases.build[].proves, evidence contract_id mismatch, or invalid evidence proofs).",
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system",
-            "response": "Exit code 3 and prints the validation error."
+            "response": "Exit code 3 and prints one of:\n- \"Invalid JSON in <path>: ...\"\n- \"Contract <id> is ready, but clauses are invalid: ...\"\n- \"Contract <id> acceptance_tests[].proves is invalid: ...\"\n- \"Invalid bundle.json in <path>: ...\"\n- \"Bundle references unknown clause ids in phases.build[].proves:\" followed by \"  - <id>\" lines\n- \"Invalid evidence.json in <path>: ...\"\n- \"Evidence contract_id mismatch in <path>: expected \\\"<id>\\\", got <value>\""
           },
           {
             "id": "VFY-ERR-003",
@@ -102,7 +102,7 @@
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system",
-            "response": "Exit code 4 and prints the not-ready details."
+            "response": "Exit code 4 and prints:\nContract <id> not ready/implemented:\n  status=\"<status>\"\n  open_questions=<json>"
           },
           {
             "id": "VFY-ERR-004",
@@ -111,7 +111,7 @@
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system",
-            "response": "Exit code 4 and prints missing clause ids."
+            "response": "Exit code 4 and prints either:\n- \"Bundle planning coverage missing for contract <id>: <n>/<n> clauses not assigned\" followed by \"  - <id>\" lines\n- \"Missing clause proofs for contract <id>: <n>/<n>\" followed by \"  - <id>\" lines"
           },
           {
             "id": "VFY-ERR-005",
@@ -120,7 +120,7 @@
             "enforcement": "runtime",
             "mechanism": "rust_runtime_validation",
             "obligation": "system",
-            "response": "Exit code 1 and prints the failing command and exit code."
+            "response": "Exit code 1; stderr includes \"<tool> exited with code <n>\" (after a \"==> (cd ...) <tool> ...\" line on stdout)."
           }
         ]
       }
@@ -130,7 +130,7 @@
   "system_invariants": [
     {
       "id": "XT-INV-001",
-      "statement": "Clap CLI surface exposes only the following cbd subcommands and flags (no additions/removals): new-task (--id, --slug, --force default false, --interactive default false), new-epic (--id, --slug, --force default false, --interactive default false), new-review (--id, --slug, --title optional, --force default false, --interactive default false), validate-ready (--id), verify (--id).",
+      "statement": "Clap CLI surface includes exactly these cbd subcommands and their flags/args: new-task (--id, --slug, --force default false, --interactive default false), new-epic (--id, --slug, --force default false, --interactive default false), new-review (--id, --slug, --title optional, --force default false, --interactive default false), validate-ready (--id), verify (--id). Default clap flags (e.g., --help, --version) are permitted.",
       "enforcement": "test",
       "mechanism": "rust_test",
       "obligation": "system"
@@ -245,7 +245,7 @@
     },
     {
       "id": "AT-VALIDATE-READY-001",
-      "description": "Exercise `cbd validate-ready` with: missing contract (exit 2), invalid JSON (exit 3), not ready/open_questions (exit 4), ready (exit 0).",
+      "description": "Exercise `cbd validate-ready` with: missing contract (exit 2, \"Missing contract: <path>\"), invalid JSON (exit 3, line starts with \"Invalid JSON in <path>:\"), not ready/open_questions (exit 4, prints \"Contract <id> not ready:\" + status/open_questions lines), ready (exit 0, \"Contract <id> is ready.\").",
       "proves": [
         "VR-POST-001",
         "VR-ERR-001",
@@ -255,7 +255,7 @@
     },
     {
       "id": "AT-VERIFY-001",
-      "description": "Exercise `cbd verify` with: missing artifacts (exit 2), invalid JSON/schema (exit 3), not ready/open_questions (exit 4), missing planning or proofs (exit 4), checks failing (exit 1), and a successful run (exit 0).",
+      "description": "Exercise `cbd verify` with: missing artifacts (exit 2, \"Missing contract|bundle|evidence: <path>\"), invalid JSON/schema cases (exit 3 with the VFY-ERR-002 message prefixes), not ready/open_questions (exit 4, \"Contract <id> not ready/implemented:\" + status/open_questions lines), missing planning coverage vs missing proofs (exit 4 with the VFY-ERR-004 prefixes and id lists), checks failing (exit 1, stderr includes \"<tool> exited with code <n>\" after a \"==> (cd ...) <tool> ...\" line), and a successful run (exit 0, \"cbd verify <id>: OK\").",
       "proves": [
         "VFY-POST-001",
         "VFY-ERR-001",
@@ -267,7 +267,9 @@
     }
   ],
   "open_questions": [],
-  "assumptions": [],
+  "assumptions": [
+    "Template files under .cbd/**/TEMPLATE* and .cbd/reviews/TEMPLATE/** are unchanged by this refactor; template changes are handled by a separate contract."
+  ],
   "definition_of_done": [
     "open_questions is empty",
     "acceptance_tests implemented and passing",
