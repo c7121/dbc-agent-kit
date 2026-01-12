@@ -1,0 +1,80 @@
+{
+  "id": "0002",
+  "title": "Refactor xtask into modules",
+  "slug": "xtask-modules-refactor",
+  "status": "draft",
+  "artifact_paths": {
+    "task": ".cbd/tasks/0002-xtask-modules-refactor.md",
+    "contract": ".cbd/contracts/0002.contract.json",
+    "evidence_json": ".cbd/reports/0002.evidence.json",
+    "evidence": ".cbd/reports/0002.evidence.md"
+  },
+  "phases": {
+    "plan": [
+      {
+        "step": "context",
+        "status": "done",
+        "notes": "Reviewed xtask/src/main.rs for CLI definitions, helper utilities, and cbd subcommand handlers; captured the requested target module layout and invariants."
+      },
+      {
+        "step": "draft_contract",
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "step": "critique_contract",
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "step": "revise_contract",
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "step": "clarify_rounds",
+        "status": "todo",
+        "notes": ""
+      },
+      {
+        "step": "set_ready",
+        "status": "todo",
+        "notes": ""
+      }
+    ],
+    "build": [
+      {
+        "id": "WI-001",
+        "owner": "build",
+        "description": "TBD: implement the main code changes for this task. Prefer splitting into multiple small work items (by component/integration or clause groups) instead of one mega-WI.",
+        "proves": [],
+        "outputs": [],
+        "status": "todo"
+      },
+      {
+        "id": "WI-002",
+        "owner": "test",
+        "description": "TBD: add/extend tests proving the contract clause ids. Prefer grouping tests by acceptance scenario and linking each test to clause ids.",
+        "proves": [],
+        "outputs": [],
+        "status": "todo"
+      },
+      {
+        "id": "WI-003",
+        "owner": "verify",
+        "description": "Run `xtask cbd verify --id 0002` and update evidence.json with proof locations.",
+        "proves": [],
+        "outputs": [],
+        "status": "todo"
+      },
+      {
+        "id": "WI-004",
+        "owner": "review",
+        "description": "Package a review archive and request a second-pass review (e.g., GPT-5.2 Pro).",
+        "proves": [],
+        "outputs": [],
+        "status": "todo"
+      }
+    ]
+  }
+}

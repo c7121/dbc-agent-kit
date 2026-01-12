@@ -1,0 +1,38 @@
+{
+  "id": "0002",
+  "title": "Refactor xtask into modules",
+  "status": "draft",
+  "scope": {
+    "in": [
+      "Split xtask implementation into modules with clap CLI structs/enums centralized and each cbd subcommand handler in its own file.",
+      "Move shared helpers into util modules as applicable (paths, fs, json, template, prompt, process, git).",
+      "Keep the public CLI and behavior unchanged (command names, arguments, exit codes, verification logic).",
+      "Keep output formats, templates, and generated file contents unchanged."
+    ],
+    "out": [
+      "Add new CLI flags or subcommands.",
+      "Change exit codes, error handling semantics, or verification logic.",
+      "Change JSON schema or template formats or generated outputs.",
+      "Add new dependencies."
+    ]
+  },
+  "interfaces": {
+    "commands": []
+  },
+  "data_contracts": [],
+  "system_invariants": [],
+  "observability": {
+    "logs": [],
+    "metrics": [],
+    "traces": []
+  },
+  "acceptance_tests": [],
+  "open_questions": [],
+  "assumptions": [],
+  "definition_of_done": [
+    "open_questions is empty",
+    "acceptance_tests implemented and passing",
+    "each clause id in pre/post/invariants/errors has a proof entry in evidence.json",
+    "Rust enforcement is authoritative; TypeScript enforcement is UX-only"
+  ]
+}
