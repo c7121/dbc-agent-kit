@@ -1,0 +1,35 @@
+{
+  "contract_id": "0001",
+  "clause_proofs": [
+    {
+      "clause_id": "NT-PRE-001",
+      "proofs": [
+        {
+          "kind": "runtime",
+          "location": "xtask/src/main.rs:855",
+          "details": "Interactive task scaffolding reads .cbd/tasks/TEMPLATE.md via read_to_string."
+        }
+      ]
+    },
+    {
+      "clause_id": "NE-PRE-001",
+      "proofs": [
+        {
+          "kind": "runtime",
+          "location": "xtask/src/main.rs:535",
+          "details": "Interactive epic scaffolding reads .cbd/requirements/TEMPLATE.epic.md via read_to_string."
+        }
+      ]
+    },
+    {
+      "clause_id": "NR-PRE-001",
+      "proofs": [
+        {
+          "kind": "runtime",
+          "location": "xtask/src/main.rs:714",
+          "details": "Interactive review scaffolding reads .cbd/reviews/TEMPLATE/review.seed.md via read_to_string."
+        }
+      ]
+    }
+  ]
+}

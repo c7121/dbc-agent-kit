@@ -311,19 +311,162 @@ fn normalize_block(text: &str) -> String {
     text.trim_end().to_string()
 }
 
-fn body_or(text: &str, fallback: &str) -> String {
-    if text.trim().is_empty() {
-        fallback.to_string()
-    } else {
-        normalize_block(text)
-    }
-}
-
 fn apply_replacements(mut s: String, replacements: &[(String, String)]) -> String {
     for (k, v) in replacements {
         s = s.replace(k, v);
     }
     s
+}
+
+fn parse_heading(line: &str) -> Option<(usize, &str)> {
+    let trimmed = line.trim_start();
+    let hashes = trimmed.chars().take_while(|c| *c == '#').count();
+    if hashes == 0 {
+        return None;
+    }
+    let rest = &trimmed[hashes..];
+    if !rest.starts_with(' ') {
+        return None;
+    }
+    Some((hashes, rest[1..].trim()))
+}
+
+fn replace_section_body(text: &str, heading: &str, level: usize, new_body: &str) -> Result<String> {
+    let trailing_newline = text.ends_with('\n');
+    let lines: Vec<&str> = text.lines().collect();
+    let mut out: Vec<String> = Vec::with_capacity(lines.len());
+    let mut i = 0;
+    let mut replaced = false;
+
+    while i < lines.len() {
+        let line = lines[i];
+        if let Some((lvl, title)) = parse_heading(line) {
+            if lvl == level && title == heading && !replaced {
+                out.push(line.to_string());
+
+                let mut j = i + 1;
+                while j < lines.len() {
+                    if let Some((next_lvl, _)) = parse_heading(lines[j]) {
+                        if next_lvl <= lvl {
+                            break;
+                        }
+                    }
+                    j += 1;
+                }
+
+                let original_body = &lines[i + 1..j];
+                let leading_blanks = original_body
+                    .iter()
+                    .take_while(|l| l.trim().is_empty())
+                    .count();
+                let trailing_blanks = original_body
+                    .iter()
+                    .rev()
+                    .take_while(|l| l.trim().is_empty())
+                    .count();
+
+                for _ in 0..leading_blanks {
+                    out.push(String::new());
+                }
+
+                let normalized = normalize_block(new_body);
+                for line in normalized.split('\n') {
+                    out.push(line.to_string());
+                }
+
+                for _ in 0..trailing_blanks {
+                    out.push(String::new());
+                }
+
+                i = j;
+                replaced = true;
+                continue;
+            }
+        }
+
+        out.push(line.to_string());
+        i += 1;
+    }
+
+    if !replaced {
+        return Err(anyhow!(
+            "Missing heading in template: level {level} '{heading}'"
+        ));
+    }
+
+    let mut out_text = out.join("\n");
+    if trailing_newline {
+        out_text.push('\n');
+    }
+    Ok(out_text)
+}
+
+fn replace_section_if_non_empty<F>(
+    text: String,
+    heading: &str,
+    level: usize,
+    input: &str,
+    transform: F,
+) -> Result<String>
+where
+    F: FnOnce(&str) -> String,
+{
+    if input.trim().is_empty() {
+        return Ok(text);
+    }
+    let replacement = transform(input);
+    replace_section_body(&text, heading, level, &replacement)
+}
+
+fn replace_line_prefix(text: &str, prefix: &str, value: &str) -> Result<String> {
+    let trailing_newline = text.ends_with('\n');
+    let mut out: Vec<String> = Vec::new();
+    let mut replaced = false;
+
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with(prefix) && !replaced {
+            let indent_len = line.len() - trimmed.len();
+            let indent = &line[..indent_len];
+            out.push(format!("{indent}{prefix} {value}"));
+            replaced = true;
+        } else {
+            out.push(line.to_string());
+        }
+    }
+
+    if !replaced {
+        return Err(anyhow!("Missing line prefix in template: '{prefix}'"));
+    }
+
+    let mut out_text = out.join("\n");
+    if trailing_newline {
+        out_text.push('\n');
+    }
+    Ok(out_text)
+}
+
+fn replace_line_prefix_if_non_empty(text: String, prefix: &str, input: &str) -> Result<String> {
+    if input.trim().is_empty() {
+        return Ok(text);
+    }
+    replace_line_prefix(&text, prefix, input)
+}
+
+fn bullet_lines(block: &str) -> String {
+    block
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .map(|l| {
+            if l.starts_with('-') || l.starts_with('*') {
+                l.to_string()
+            } else {
+                format!("- {l}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn copy_dir_with_replacements(
@@ -344,7 +487,8 @@ fn copy_dir_with_replacements(
     for entry in fs::read_dir(src_dir)
         .with_context(|| format!("Failed to read directory {}", src_dir.display()))?
     {
-        let entry = entry.with_context(|| format!("Failed to read entry in {}", src_dir.display()))?;
+        let entry =
+            entry.with_context(|| format!("Failed to read entry in {}", src_dir.display()))?;
         let file_type = entry
             .file_type()
             .with_context(|| format!("Failed to stat {}", entry.path().display()))?;
@@ -377,349 +521,6 @@ fn copy_dir_with_replacements(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-fn render_task_markdown(
-    id: &str,
-    title: &str,
-    goal: &str,
-    user_story: &str,
-    in_scope: &str,
-    out_of_scope: &str,
-    scenarios: &str,
-    context: &str,
-    constraints: &str,
-    dependencies: &str,
-    unknowns: &str,
-) -> String {
-    let title = body_or(title, "Untitled");
-    let goal = body_or(goal, "TBD");
-    let user_story = body_or(
-        user_story,
-        "As a <user>, I want <capability> so that <benefit>.",
-    );
-    let in_scope = bullet_lines(in_scope, "- TBD");
-    let out_of_scope = bullet_lines(out_of_scope, "- TBD");
-    let scenarios = body_or(
-        scenarios,
-        "### Scenario 1: <name>\nGiven …\nWhen …\nThen …\n\n### Scenario 2: <name>\nGiven …\nWhen …\nThen …",
-    );
-    let context = body_or(context, "- TBD");
-    let constraints = bullet_lines(constraints, "- TBD");
-    let dependencies = bullet_lines(dependencies, "- (none yet)");
-    let unknowns = if unknowns.trim().is_empty() {
-        "- (none yet; the agent will ask in CONTRACT mode)".to_string()
-    } else {
-        bullet_lines(unknowns, "- (none yet; the agent will ask in CONTRACT mode)")
-    };
-
-    // Keep this aligned with your contract-first workflow.
-    // The point is to capture just enough intent so CONTRACT mode can draft the DbC artifact.
-    format!(
-        "\
-# Task {id} — {title}
-
-## Goal
-{goal}
-
-## User story
-{user_story}
-
-## Scope
-
-### In scope
-{in_scope}
-
-### Out of scope
-{out_of_scope}
-
-## Acceptance scenarios (examples-first)
-Use Given/When/Then style.
-
-{scenarios}
-
-## Context
-{context}
-
-## Constraints
-{constraints}
-
-## Dependencies
-{dependencies}
-
-## Observability (optional)
-- Logs (redaction expectations if any)
-- Metrics
-- Traces
-
-## Unknowns
-{unknowns}
-
-## Clarifications (optional)
-If any section above is blank or vague, answer these prompts (the agent may ask these in CONTRACT mode):
-- Goal: What observable outcome proves the task is complete?
-- User story: Who benefits from this change, what do they need, and why?
-- Context: What existing code/docs should be read first?
-- Constraints: Any perf, security, compliance, or operational limits?
-- Out of scope: What is explicitly excluded?
-"
-    )
-}
-
-fn bullet_lines(block: &str, fallback: &str) -> String {
-    let trimmed = block.trim();
-    if trimmed.is_empty() {
-        return fallback.to_string();
-    }
-
-    trimmed
-        .lines()
-        .map(|l| l.trim())
-        .filter(|l| !l.is_empty())
-        .map(|l| {
-            if l.starts_with('-') || l.starts_with('*') {
-                l.to_string()
-            } else {
-                format!("- {l}")
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-#[allow(clippy::too_many_arguments)]
-fn render_epic_markdown(
-    epic_id: &str,
-    slug: &str,
-    title: &str,
-    problem: &str,
-    primary_user: &str,
-    value: &str,
-    success_metrics: &str,
-    success_timeframe: &str,
-    in_scope: &str,
-    out_of_scope: &str,
-    must_not_happen: &str,
-    security: &str,
-    compliance: &str,
-    performance: &str,
-    reliability: &str,
-    cost: &str,
-    ops: &str,
-    external_systems: &str,
-    auth_model: &str,
-    data_sources: &str,
-    data_sinks: &str,
-    runtime_env: &str,
-    scenarios: &str,
-    walking_skeleton: &str,
-) -> String {
-    let title = body_or(title, "Untitled epic");
-    let problem = body_or(problem, "- TBD");
-    let primary_user = body_or(primary_user, "TBD");
-    let value = body_or(value, "- TBD");
-    let success_metrics = body_or(success_metrics, "- TBD");
-    let success_timeframe = body_or(success_timeframe, "- TBD");
-
-    let in_scope = bullet_lines(in_scope, "- TBD");
-    let out_of_scope = bullet_lines(out_of_scope, "- TBD");
-    let must_not_happen = bullet_lines(must_not_happen, "- (none specified yet)");
-
-    let security = body_or(security, "TBD");
-    let compliance = body_or(compliance, "TBD");
-    let performance = body_or(performance, "TBD");
-    let reliability = body_or(reliability, "TBD");
-    let cost = body_or(cost, "TBD");
-    let ops = body_or(ops, "TBD");
-
-    let external_systems = bullet_lines(external_systems, "- TBD");
-    let auth_model = body_or(auth_model, "TBD");
-    let data_sources = bullet_lines(data_sources, "- TBD");
-    let data_sinks = bullet_lines(data_sinks, "- TBD");
-    let runtime_env = bullet_lines(runtime_env, "- TBD");
-
-    let scenarios = body_or(
-        scenarios,
-        "### Scenario 1: <name>\nGiven …\nWhen …\nThen …\n\n### Scenario 2: <name>\nGiven …\nWhen …\nThen …",
-    );
-    let walking_skeleton = if walking_skeleton.trim().is_empty() {
-        "- (not specified yet)".to_string()
-    } else {
-        bullet_lines(walking_skeleton, "- (not specified yet)")
-    };
-
-    format!(
-        "\
-# Epic {epic_id} — {title}
-Status: draft
-
-## Problem
-{problem}
-
-## Primary user
-- {primary_user}
-
-## Value / benefit
-{value}
-
-## Success metrics
-{success_metrics}
-
-Timeframe / measurement window:
-{success_timeframe}
-
-## Scope
-### In scope
-{in_scope}
-
-### Out of scope / Non-goals
-{out_of_scope}
-
-## Must-not-happen (safety / risk constraints)
-{must_not_happen}
-
-## Constraints
-- Security/privacy: {security}
-- Compliance/legal: {compliance}
-- Performance/latency: {performance}
-- Reliability/availability: {reliability}
-- Cost: {cost}
-- Operational constraints: {ops}
-
-## Integrations / dependencies
-- External systems:
-{external_systems}
-- Auth model: {auth_model}
-- Data sources:
-{data_sources}
-- Data sinks:
-{data_sinks}
-
-## Runtime / environment
-{runtime_env}
-
-## Acceptance scenarios (examples-first)
-Use Given/When/Then style.
-
-{scenarios}
-
-## Walking skeleton MVP
-{walking_skeleton}
-
-## Open questions
-- Q-001:
-- Q-002:
-
-## Architectural forks (ADRs)
-Only if needed. Link MADR files under `docs/decisions/`.
-
-- ADR-0001: <title> — docs/decisions/0001-<slug>.md (status: proposed/accepted/…)
-
-## C4 notes (optional)
-- Context diagram: docs/c4/{epic_id}-{slug}/context.(md|puml|mermaid)
-- Container diagram: docs/c4/{epic_id}-{slug}/container.(md|puml|mermaid)
-
-## Task backlog
-(High-level list. The machine-readable version lives in `{epic_id}-{slug}.tasklist.json`.)
-
-- T-????:
-"
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-fn render_review_seed_markdown(
-    review_id: &str,
-    title: &str,
-    kind: &str,
-    date: &str,
-    prd_path: &str,
-    repo_ref: &str,
-    owner_stakeholders: &str,
-    in_scope: &str,
-    out_of_scope: &str,
-    assumptions: &str,
-    primary_assets: &str,
-    external_systems: &str,
-    security_privacy: &str,
-    known_risks: &str,
-) -> String {
-    let title = body_or(title, "Untitled");
-    let kind = body_or(kind, "PRD");
-    let date = body_or(date, "YYYY-MM-DD");
-    let prd_path = body_or(prd_path, "- (not provided yet)");
-    let repo_ref = body_or(repo_ref, "- (not provided yet)");
-    let owner_stakeholders = body_or(owner_stakeholders, "- (not provided yet)");
-
-    let in_scope = bullet_lines(in_scope, "- TBD");
-    let out_of_scope = bullet_lines(out_of_scope, "- TBD");
-    let assumptions = bullet_lines(assumptions, "- TBD");
-    let primary_assets = bullet_lines(primary_assets, "- TBD");
-    let external_systems = bullet_lines(external_systems, "- TBD");
-    let security_privacy = bullet_lines(security_privacy, "- TBD");
-    let known_risks = bullet_lines(known_risks, "- (none specified yet)");
-
-    format!(
-        "\
-# Review {review_id} — {title}
-Kind: {kind}
-Date: {date}
-Status: draft
-
-## What is being reviewed?
-- PRD link / doc path:
-{prd_path}
-- Repo / commit / PR link (if implementation):
-{repo_ref}
-- Owner / stakeholders:
-{owner_stakeholders}
-
-## Scope
-### In scope
-{in_scope}
-
-### Out of scope
-{out_of_scope}
-
-## Assumptions
-{assumptions}
-
-## Primary assets (initial)
-List what matters most (money, keys, PII, positions, audit logs, etc.).
-{primary_assets}
-
-## External systems / integrations
-{external_systems}
-
-## Security / privacy constraints (explicit)
-{security_privacy}
-
-## Known risks / incidents / history (if any)
-{known_risks}
-
-## Architectural forks / ADRs
-List ADRs relevant to this review.
-- (none yet)
-
-## Review outputs
-Artifacts expected in this folder (see review.bundle.json):
-- contract-map.md
-- invariants.md
-- assets.md
-- dfd.md
-- abuse-cases.md
-- identity-authz.md
-- secrets-keys.md
-- reliability-failure.md
-- observability-audit.md
-- supply-chain.md
-- threats.stride.md
-- privacy.linddun.md (optional)
-- controls.asvs.md (optional)
-- findings.tasklist.json
-"
-    )
-}
-
 fn cbd_new_epic(args: &NewEpicArgs) -> Result<i32> {
     let cbd = cbd_root()?;
 
@@ -731,95 +532,95 @@ fn cbd_new_epic(args: &NewEpicArgs) -> Result<i32> {
     let tasklist_template_path = req_dir.join("TEMPLATE.tasklist.json");
 
     let default_title = title_from_slug(&args.slug);
+    let epic_template = read_to_string(&epic_template_path).with_context(|| {
+        format!(
+            "Missing epic template. Expected at {}",
+            epic_template_path.display()
+        )
+    })?;
 
     let (epic_title, epic_text) = if args.interactive {
         println!("Creating epic {}-{} interactively.", args.id, args.slug);
         println!("Press Enter to accept defaults or skip optional fields.\n");
 
-        let title = prompt_line("Short title", Some(&default_title))?;
+        let title = prompt_line("Title", Some(&default_title))?;
 
-        // Stock discovery questions (baseline for any epic)
-        let problem = prompt_block("Problem (1–3 sentences; what problem are we solving?)")?;
-        let primary_user = prompt_line("Primary user/persona", None)?;
-        let value = prompt_block("Value/benefit (who benefits, what changes, why)")?;
-
-        let success_metrics = prompt_block("Success metrics (what does success look like?)")?;
-        let success_timeframe = prompt_line(
-            "Success timeframe / measurement window (e.g., '2 weeks after launch')",
-            None,
+        let problem = prompt_block("Problem (one per line)")?;
+        let target_users = prompt_block("Target users / stakeholders (one per line)")?;
+        let goals = prompt_block("Goals (outcomes) (one per line)")?;
+        let success_metrics = prompt_block("Success metrics (one per line)")?;
+        let in_scope = prompt_block("In scope (one per line)")?;
+        let out_of_scope = prompt_block("Out of scope / Non-goals (one per line)")?;
+        let constraints = prompt_block(
+            "Constraints (one per line; include labels like 'Security/privacy: ...')",
         )?;
-
-        let in_scope = prompt_block("In scope for the first release (one per line)")?;
-        let out_of_scope = prompt_block("Out of scope / non-goals (one per line)")?;
-
-        let must_not_happen = prompt_block(
-            "Must-not-happen safety/risk constraints (one per line; e.g., 'never leak secrets')",
-        )?;
-
-        let security = prompt_line("Security/privacy constraints [optional]", None)?;
-        let compliance = prompt_line("Compliance/legal constraints [optional]", None)?;
-        let performance = prompt_line("Performance/latency expectations [optional]", None)?;
-        let reliability = prompt_line("Reliability/availability expectations [optional]", None)?;
-        let cost = prompt_line("Cost constraints [optional]", None)?;
-        let ops = prompt_line(
-            "Operational constraints (deploy env, observability expectations) [optional]",
-            None,
-        )?;
-
-        let external_systems = prompt_block("External systems/integrations (one per line)")?;
-        let auth_model = prompt_line("Auth model (how do we authenticate?) [optional]", None)?;
-        let data_sources = prompt_block("Data sources (one per line) [optional]")?;
-        let data_sinks = prompt_block("Data sinks (one per line) [optional]")?;
-        let runtime_env = prompt_block(
-            "Runtime/environment (where will it run? local/cloud/CI; constraints) (one per line)",
-        )?;
-
+        let integrations = prompt_block("Integrations / dependencies (one per line)")?;
+        let user_stories = prompt_block("User stories (one per line; numbering ok)")?;
         let scenarios = prompt_block(
-            "Example scenarios (2–3; Given/When/Then). You may include headings like '### Scenario 1: ...'",
+            "Acceptance scenarios (Given/When/Then) [optional; you may include headings like '### Scenario 1: ...']",
         )?;
+        let open_questions = prompt_block("Open questions (one per line) [optional]")?;
 
-        let walking_skeleton = prompt_block(
-            "Walking skeleton MVP (smallest end-to-end slice) [optional; one per line]",
+        let replacements = vec![
+            ("<EPIC_ID>".to_string(), args.id.clone()),
+            ("<TITLE>".to_string(), title.clone()),
+            ("<slug>".to_string(), args.slug.clone()),
+            ("<epic_id>".to_string(), args.id.clone()),
+        ];
+        let mut text = apply_replacements(epic_template.clone(), &replacements);
+        text = replace_section_if_non_empty(text, "Problem", 2, &problem, bullet_lines)?;
+        text = replace_section_if_non_empty(
+            text,
+            "Target users / stakeholders",
+            2,
+            &target_users,
+            bullet_lines,
         )?;
-
-        let text = render_epic_markdown(
-            &args.id,
-            &args.slug,
-            &title,
-            &problem,
-            &primary_user,
-            &value,
+        text = replace_section_if_non_empty(text, "Goals (outcomes)", 2, &goals, bullet_lines)?;
+        text = replace_section_if_non_empty(
+            text,
+            "Success metrics",
+            2,
             &success_metrics,
-            &success_timeframe,
-            &in_scope,
+            bullet_lines,
+        )?;
+        text = replace_section_if_non_empty(text, "In scope", 3, &in_scope, bullet_lines)?;
+        text = replace_section_if_non_empty(
+            text,
+            "Out of scope / Non-goals",
+            3,
             &out_of_scope,
-            &must_not_happen,
-            &security,
-            &compliance,
-            &performance,
-            &reliability,
-            &cost,
-            &ops,
-            &external_systems,
-            &auth_model,
-            &data_sources,
-            &data_sinks,
-            &runtime_env,
+            bullet_lines,
+        )?;
+        text = replace_section_if_non_empty(text, "Constraints", 2, &constraints, bullet_lines)?;
+        text = replace_section_if_non_empty(
+            text,
+            "Integrations / dependencies",
+            2,
+            &integrations,
+            bullet_lines,
+        )?;
+        text =
+            replace_section_if_non_empty(text, "User stories", 2, &user_stories, normalize_block)?;
+        text = replace_section_if_non_empty(
+            text,
+            "Acceptance scenarios (examples-first)",
+            2,
             &scenarios,
-            &walking_skeleton,
-        );
+            normalize_block,
+        )?;
+        text = replace_section_if_non_empty(
+            text,
+            "Open questions",
+            2,
+            &open_questions,
+            normalize_block,
+        )?;
 
         (title, text)
     } else {
         // Non-interactive: copy the template and replace obvious placeholders.
-        let t = read_to_string(&epic_template_path).with_context(|| {
-            format!(
-                "Missing epic template. Expected at {}",
-                epic_template_path.display()
-            )
-        })?;
-
-        let text = t
+        let text = epic_template
             .replace("<EPIC_ID>", &args.id)
             .replace("<TITLE>", &default_title)
             .replace("<slug>", &args.slug)
@@ -875,6 +676,7 @@ fn cbd_new_review(args: &NewReviewArgs) -> Result<i32> {
     let reviews_dir = cbd.join("reviews");
     let template_dir = reviews_dir.join("TEMPLATE");
     let out_dir = reviews_dir.join(format!("{}-{}", args.id, args.slug));
+    let seed_template_path = template_dir.join("review.seed.md");
 
     if out_dir.exists() && !args.force {
         return Err(anyhow!(
@@ -909,11 +711,19 @@ fn cbd_new_review(args: &NewReviewArgs) -> Result<i32> {
         println!("Creating review {}-{} interactively.", args.id, args.slug);
         println!("Press Enter to accept defaults or skip optional fields.\n");
 
+        let review_template = read_to_string(&seed_template_path).with_context(|| {
+            format!(
+                "Missing review seed template. Expected at {}",
+                seed_template_path.display()
+            )
+        })?;
+        let mut seed_text = apply_replacements(review_template, &replacements);
+
         let kind = prompt_line("Kind (PRD|Implementation|Both)", Some("PRD"))?;
         let date = prompt_line("Date (YYYY-MM-DD)", Some("YYYY-MM-DD"))?;
-        let prd_path = prompt_block("PRD link / doc path (optional)")?;
-        let repo_ref = prompt_block("Repo / commit / PR link (optional)")?;
-        let owner_stakeholders = prompt_block("Owner / stakeholders (optional)")?;
+        let what_reviewed = prompt_block(
+            "What is being reviewed? (include PRD link, repo/PR link, owner/stakeholders as separate lines)",
+        )?;
         let in_scope = prompt_block("In scope (one per line)")?;
         let out_of_scope = prompt_block("Out of scope (one per line)")?;
         let assumptions = prompt_block("Assumptions (one per line) [optional]")?;
@@ -922,24 +732,57 @@ fn cbd_new_review(args: &NewReviewArgs) -> Result<i32> {
         )?;
         let external_systems = prompt_block("External systems / integrations (one per line)")?;
         let security_privacy = prompt_block("Security / privacy constraints (one per line)")?;
-        let known_risks = prompt_block("Known risks / incidents / history (one per line) [optional]")?;
+        let known_risks =
+            prompt_block("Known risks / incidents / history (one per line) [optional]")?;
 
-        let seed_text = render_review_seed_markdown(
-            &args.id,
-            &title,
-            &kind,
-            &date,
-            &prd_path,
-            &repo_ref,
-            &owner_stakeholders,
-            &in_scope,
+        seed_text = replace_line_prefix_if_non_empty(seed_text, "Kind:", &kind)?;
+        seed_text = replace_line_prefix_if_non_empty(seed_text, "Date:", &date)?;
+        seed_text = replace_section_if_non_empty(
+            seed_text,
+            "What is being reviewed?",
+            2,
+            &what_reviewed,
+            normalize_block,
+        )?;
+        seed_text =
+            replace_section_if_non_empty(seed_text, "In scope", 3, &in_scope, bullet_lines)?;
+        seed_text = replace_section_if_non_empty(
+            seed_text,
+            "Out of scope",
+            3,
             &out_of_scope,
-            &assumptions,
+            bullet_lines,
+        )?;
+        seed_text =
+            replace_section_if_non_empty(seed_text, "Assumptions", 2, &assumptions, bullet_lines)?;
+        seed_text = replace_section_if_non_empty(
+            seed_text,
+            "Primary assets (initial)",
+            2,
             &primary_assets,
+            bullet_lines,
+        )?;
+        seed_text = replace_section_if_non_empty(
+            seed_text,
+            "External systems / integrations",
+            2,
             &external_systems,
+            bullet_lines,
+        )?;
+        seed_text = replace_section_if_non_empty(
+            seed_text,
+            "Security / privacy constraints (explicit)",
+            2,
             &security_privacy,
+            bullet_lines,
+        )?;
+        seed_text = replace_section_if_non_empty(
+            seed_text,
+            "Known risks / incidents / history (if any)",
+            2,
             &known_risks,
-        );
+            bullet_lines,
+        )?;
 
         let seed_path = out_dir.join("review.seed.md");
         write_text(&seed_path, &seed_text, true)?;
@@ -1009,6 +852,12 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
             evidence_json_template_path.display()
         )
     })?;
+    let task_template = read_to_string(&task_template_path).with_context(|| {
+        format!(
+            "Missing task template. Expected at {}",
+            task_template_path.display()
+        )
+    })?;
 
     // Title: default from slug; interactive can override
     let default_title = title_from_slug(&args.slug);
@@ -1016,7 +865,7 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
 
     // Task markdown:
     // - Non-interactive: use TEMPLATE.md (replace <ID> and <SLUG> if present)
-    // - Interactive: prompt for fields and render a filled file (independent of TEMPLATE.md)
+    // - Interactive: use TEMPLATE.md and replace section bodies from prompts
     let task_text = if args.interactive {
         println!("Creating task {}-{} interactively.", args.id, args.slug);
         println!("Press Enter to accept defaults or skip optional fields.\n");
@@ -1036,33 +885,35 @@ fn cbd_new_task(args: &NewTaskArgs) -> Result<i32> {
         )?;
 
         let context = prompt_block("Context (background, links, current behavior)")?;
-        let constraints = prompt_block("Constraints (runtime, perf, security, compliance) (one per line)")?;
-        let dependencies = prompt_block(
-            "Dependencies (external systems/APIs, ADRs) (one per line) [optional]",
-        )?;
+        let constraints =
+            prompt_block("Constraints (runtime, perf, security, compliance) (one per line)")?;
+        let dependencies =
+            prompt_block("Dependencies (external systems/APIs, ADRs) (one per line) [optional]")?;
         let unknowns = prompt_block("Unknowns (open questions; optional)")?;
 
-        render_task_markdown(
-            &args.id,
-            &title,
-            &goal,
-            &user_story,
-            &in_scope,
-            &out_of_scope,
+        let replacements = vec![
+            ("<ID>".to_string(), args.id.clone()),
+            ("<short title>".to_string(), title.clone()),
+        ];
+        let mut text = apply_replacements(task_template.clone(), &replacements);
+        text = replace_section_if_non_empty(text, "Goal", 2, &goal, normalize_block)?;
+        text = replace_section_if_non_empty(text, "User story", 2, &user_story, normalize_block)?;
+        text = replace_section_if_non_empty(text, "In scope", 3, &in_scope, bullet_lines)?;
+        text = replace_section_if_non_empty(text, "Out of scope", 3, &out_of_scope, bullet_lines)?;
+        text = replace_section_if_non_empty(
+            text,
+            "Acceptance scenarios (examples-first)",
+            2,
             &scenarios,
-            &context,
-            &constraints,
-            &dependencies,
-            &unknowns,
-        )
-    } else {
-        let task_template = read_to_string(&task_template_path).with_context(|| {
-            format!(
-                "Missing task template. Expected at {}",
-                task_template_path.display()
-            )
-        })?;
+            normalize_block,
+        )?;
+        text = replace_section_if_non_empty(text, "Context", 2, &context, bullet_lines)?;
+        text = replace_section_if_non_empty(text, "Constraints", 2, &constraints, bullet_lines)?;
+        text = replace_section_if_non_empty(text, "Dependencies", 2, &dependencies, bullet_lines)?;
+        text = replace_section_if_non_empty(text, "Unknowns", 2, &unknowns, bullet_lines)?;
 
+        text
+    } else {
         task_template
             .replace("<ID>", &args.id)
             .replace("<SLUG>", &args.slug)

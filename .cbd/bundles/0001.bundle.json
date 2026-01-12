@@ -53,9 +53,10 @@
           "NR-PRE-001"
         ],
         "outputs": [
-          "xtask/src/main.rs"
+          "xtask/src/main.rs",
+          ".cbd/reports/0001.evidence.json"
         ],
-        "status": "todo"
+        "status": "done"
       },
       {
         "id": "WI-002",
