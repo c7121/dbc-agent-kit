@@ -1,7 +1,7 @@
 {
   "id": "0001",
   "title": "Align xtask interactive scaffolding to .cbd templates",
-  "status": "ready",
+  "status": "implemented",
   "scope": {
     "in": [
       "Interactive scaffolding for `cbd new-task`, `cbd new-epic`, and `cbd new-review` renders from the corresponding .cbd templates.",

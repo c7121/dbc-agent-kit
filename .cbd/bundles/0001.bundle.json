@@ -2,7 +2,7 @@
   "id": "0001",
   "title": "Align xtask interactive scaffolding to .cbd templates",
   "slug": "xtask-template-sync",
-  "status": "draft",
+  "status": "done",
   "artifact_paths": {
     "task": ".cbd/tasks/0001-xtask-template-sync.md",
     "contract": ".cbd/contracts/0001.contract.json",
@@ -85,7 +85,7 @@
         "description": "Run `xtask cbd verify --id 0001` and update evidence.json with proof locations.",
         "proves": [],
         "outputs": [],
-        "status": "todo"
+        "status": "done"
       },
       {
         "id": "WI-004",
@@ -93,7 +93,7 @@
         "description": "Optional: package a review archive and request a second-pass review.",
         "proves": [],
         "outputs": [],
-        "status": "todo"
+        "status": "skipped"
       }
     ]
   }
