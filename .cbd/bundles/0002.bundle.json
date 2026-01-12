@@ -28,8 +28,8 @@
       },
       {
         "step": "revise_contract",
-        "status": "done",
-        "notes": "- Updated scope util module list (removed git) to match expected layout.\n- Reclassified structural invariants to test enforcement and tightened statements for checkability.\n- Added scaffolding invariants + acceptance tests for interactive/non-interactive outputs.\n- Added CLI surface/structure/dependency acceptance tests.\n- Extended AT-VERIFY-001 to cover checks-failed (VFY-ERR-005)."
+        "status": "todo",
+        "notes": ""
       },
       {
         "step": "clarify_rounds",
