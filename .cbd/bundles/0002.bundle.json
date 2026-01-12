@@ -23,8 +23,8 @@
       },
       {
         "step": "critique_contract",
-        "status": "todo",
-        "notes": ""
+        "status": "done",
+        "notes": "Critique findings:\n- Scope/clauses mismatch: scope says keep full CLI behavior unchanged, but clauses only define validate-ready/verify plus CLI surface; new-task/new-epic/new-review behaviors (force/interactive/errors/output) are not specified.\n- Ready gate semantics: contract says \"has no open_questions\" but implementation treats missing/null as empty and wrong type as not ready; should codify this in clause/acceptance tests.\n- CLI surface invariant missing requiredness for --id/--slug on new-task/new-epic/new-review; add requiredness to make tests checkable.\n- Scaffolding invariants (XT-INV-008/009) are vague; tighten to explicit template comparison rules (output == template with placeholder substitution only).\n- artifact_paths.task points to missing task seed; ensure WI-007 creates it before set_ready."
       },
       {
         "step": "revise_contract",
