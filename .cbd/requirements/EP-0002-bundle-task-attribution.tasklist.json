@@ -1,0 +1,72 @@
+{
+  "epic_id": "EP-0002",
+  "slug": "bundle-task-attribution",
+  "title": "Bundle Task Attribution and Timestamp",
+  "status": "draft",
+  "tasks": [
+    {
+      "task_id": "0007",
+      "slug": "bundle-attribution-schema",
+      "title": "Bundle attribution fields and schema updates",
+      "goal": "Define attribution fields for plan/build items and update schema/docs.",
+      "depends_on": [],
+      "acceptance_scenarios": [
+        "Scenario: Given the bundle schema is loaded, when validating a plan/build item with attribution, then model and completed_at (RFC3339 UTC) fields are accepted and documented.",
+        "Scenario: Given the bundle schema is loaded, when validating a plan/build item with attribution, then optional reasoning_level is accepted when present.",
+        "Scenario: Given a bundle without attribution fields, when validating, then it still passes as backward compatible.",
+        "Scenario: Given TEMPLATE.bundle.json, when validating it against the bundle schema, then it passes."
+      ],
+      "notes": "Schema should allow optional attribution fields to avoid forced migrations; model stored as runtime string with no normalization.",
+      "status": "ready"
+    },
+    {
+      "task_id": "0008",
+      "slug": "bundle-attribution-capture",
+      "title": "Capture attribution on plan/build completion",
+      "goal": "Record model, completed_at, and commits when steps are marked done.",
+      "depends_on": [
+        "0007"
+      ],
+      "acceptance_scenarios": [
+        "Scenario: Given a plan step is marked done, when the agent follows CONTRACT prompt guidance, then the bundle item includes model, completed_at (RFC3339 UTC), and optional commits list.",
+        "Scenario: Given a build work item is marked done, when the agent follows BUILD prompt guidance, then the bundle item includes model, completed_at (RFC3339 UTC), and optional commits list.",
+        "Scenario: Given no commit hashes are provided, when marking done, then commits may be omitted or an empty list."
+      ],
+      "notes": "Update CONTRACT/BUILD prompts to require attribution on done steps; model is runtime string; reasoning_level optional.",
+      "status": "ready"
+    },
+    {
+      "task_id": "0009",
+      "slug": "bundle-attribution-validation",
+      "title": "Validate attribution rules",
+      "goal": "Ensure done steps include required attribution fields and remain backward compatible.",
+      "depends_on": [
+        "0007",
+        "0008"
+      ],
+      "acceptance_scenarios": [
+        "Scenario: Given a bundle with at least one attribution field present, when validating, then every done plan/build item includes model and completed_at (RFC3339 UTC).",
+        "Scenario: Given a bundle with no attribution fields, when validating, then it passes attribution validation (legacy compatibility).",
+        "Scenario: Given a done item with commits omitted or empty and reasoning_level omitted, when validating, then it still passes if model and completed_at are present."
+      ],
+      "notes": "Enforce in cbd verify; apply checks only when attribution is present to avoid breaking legacy bundles.",
+      "status": "ready"
+    },
+    {
+      "task_id": "0010",
+      "slug": "reasoning-level-backfill",
+      "title": "Optional reasoning_level backfill/input",
+      "goal": "Allow adding reasoning_level attribution when the runtime does not provide it.",
+      "depends_on": [
+        "0007",
+        "0008"
+      ],
+      "acceptance_scenarios": [
+        "Scenario: Given a bundle item without reasoning_level, when a user provides a reasoning_level value, then it is stored without modifying other attribution fields.",
+        "Scenario: Given a bundle item with reasoning_level, when validating, then it still passes as optional metadata."
+      ],
+      "notes": "Deferred; scope can be CLI flag or manual edit workflow.",
+      "status": "candidate"
+    }
+  ]
+}
